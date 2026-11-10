@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Settings;
 
 use App\Concerns\ProfileValidationRules;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -28,6 +29,12 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        $user = $this->user();
+
+        if ($user === null) {
+            throw new AuthenticationException;
+        }
+
+        return $this->profileRules($user->id);
     }
 }

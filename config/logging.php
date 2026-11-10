@@ -1,5 +1,7 @@
 <?php
 
+use App\Platform\Logging\AddSensitiveDataMasking;
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -63,6 +65,7 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [AddSensitiveDataMasking::class],
         ],
 
         'daily' => [
@@ -71,6 +74,31 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [AddSensitiveDataMasking::class],
+        ],
+
+        // Production default (ADR-0009): one JSON object per line, with the
+        // request id and masked sensitive keys, kept LOG_DAILY_DAYS days.
+        'json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/app.json.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'max_files' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'formatter' => JsonFormatter::class,
+            'tap' => [AddSensitiveDataMasking::class],
+        ],
+
+        'json_stderr' => [
+            'driver' => 'monolog',
+            'level' => env('LOG_LEVEL', 'info'),
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+            ],
+            'formatter' => JsonFormatter::class,
+            'processors' => [PsrLogMessageProcessor::class],
+            'tap' => [AddSensitiveDataMasking::class],
         ],
 
         'monthly' => [
@@ -111,6 +139,7 @@ return [
             ],
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'processors' => [PsrLogMessageProcessor::class],
+            'tap' => [AddSensitiveDataMasking::class],
         ],
 
         'syslog' => [

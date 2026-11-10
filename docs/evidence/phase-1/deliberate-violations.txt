@@ -1,0 +1,48 @@
+Deliberate-violation check, 2026-11-11 01:53 +03:00, PHP 8.5.12, local workstation.
+Temporary fixtures, deleted right after this run:
+  app/Modules/Alpha/Domain/Thing.php           Domain uses the DB facade
+  app/Modules/Alpha/Application/DoThing.php    Alpha uses Beta's Models (not its Contracts)
+  app/Modules/Alpha/Contracts/AlphaApi.php     Alpha contracts -> Beta contracts
+  app/Modules/Beta/Contracts/BetaApi.php       Beta contracts -> Alpha contracts (cycle)
+  app/Modules/Beta/Models/Widget.php           env() outside config/
+  app/Platform/LeakyPlatform.php               Platform uses a module
+  resources/js/modules/alpha/a.ts              imports '@/modules/beta/b' and '../beta/b'
+  resources/js/modules/beta/b.ts
+
+== vendor/bin/pest tests/Architecture
+Failed:
+ - module Alpha uses only the contracts of module Beta
+ - modules have no dependency cycles
+ - frontend modules do not import from each other
+ - env() is read only in config files
+ - the platform core never depends on business modules
+Tests:    5 failed, 7 passed (21 assertions)
+
+== vendor/bin/deptrac analyse (exit code 1)
+ModuleDomain  DependsOnDisallowedLayer
+  App\Modules\Alpha\Domain\Thing must not depend on Illuminate\Support\Facades\DB (DbFacade)
+  app/Modules/Alpha/Domain/Thing.php:11
+Platform      DependsOnDisallowedLayer
+  App\Platform\LeakyPlatform must not depend on App\Modules\Beta\Models\Widget (ModuleModels)
+  app/Platform/LeakyPlatform.php:9 and :11
+Report: Violations 3, Skipped 0, Uncovered 65, Allowed 20, Warnings 0, Errors 0
+
+Every planted violation was reported.
+
+An earlier attempt the same minute used files written with a UTF-8 byte-order
+mark: PHP could not parse them, Pest reported only the two text-based
+failures, and deptrac printed "Syntax Error" for each file yet finished with
+"Errors 0" and no violations. deptrac alone therefore does not fail on
+unparseable files; PHPStan and the test suite do.
+
+After the fixtures were deleted: Pest 73 passed, deptrac 0 violations (exit 0).
+
+== Repeated after upgrading to Pest 5.3.5 / pest-plugin-arch 5.0.0 / PHPUnit 13.4.5
+Same eight fixtures, same results:
+Pest failed (5): module Alpha uses only the contracts of module Beta; modules
+have no dependency cycles; frontend modules do not import from each other;
+env() is read only in config files; the platform core never depends on
+business modules. Tests: 5 failed, 7 passed (21 assertions).
+deptrac: exit 1, violations 3.
+After deleting the fixtures: Pest 73 passed; deptrac 0 violations, exit 0;
+app/Modules no longer exists.

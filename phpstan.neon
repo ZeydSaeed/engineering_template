@@ -9,5 +9,6 @@ parameters:
         - config/
         - database/
         - routes/
+        - tests/Support/
 
-    level: 7
+    level: 8

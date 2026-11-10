@@ -1,0 +1,113 @@
+# Layer direction (ADR-0004). Each layer may depend only on the layers listed
+# for it in the ruleset; dependencies on classes outside every layer (the
+# framework in general, PHP itself) are not checked here.
+#
+# Module rules apply to every module at once (App\Modules\<Name>\<Layer>).
+# Rules between two modules are in tests/Architecture/ModuleBoundariesTest.php.
+deptrac:
+    paths:
+        - ./app
+
+    layers:
+        - name: Platform
+          collectors:
+              - type: classLike
+                value: ^App\\Platform\\.*
+
+        - name: AppHttp
+          collectors:
+              - type: classLike
+                value: ^App\\Http\\.*
+
+        - name: ModuleContracts
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Contracts\\.*
+
+        - name: ModuleDomain
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Domain\\.*
+
+        - name: ModuleModels
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Models\\.*
+
+        - name: ModuleApplication
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Application\\.*
+
+        - name: ModuleInfrastructure
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Infrastructure\\.*
+
+        - name: ModuleHttp
+          collectors:
+              - type: classLike
+                value: ^App\\Modules\\[^\\]+\\Http\\.*
+
+        # Framework areas whose use is restricted.
+        - name: FrameworkHttp
+          collectors:
+              - type: classLike
+                value: ^Illuminate\\Http\\(?!Client\\).*
+              - type: classLike
+                value: ^Symfony\\Component\\HttpFoundation\\.*
+
+        - name: HttpClient
+          collectors:
+              - type: classLike
+                value: ^Illuminate\\Http\\Client\\.*
+              - type: classLike
+                value: ^Illuminate\\Support\\Facades\\Http$
+
+        - name: DbFacade
+          collectors:
+              - type: classLike
+                value: ^Illuminate\\Support\\Facades\\DB$
+
+        - name: OtherFacades
+          collectors:
+              - type: classLike
+                value: ^Illuminate\\Support\\Facades\\(?!DB$|Http$).*
+
+    ruleset:
+        Platform: [FrameworkHttp, HttpClient, DbFacade, OtherFacades]
+        AppHttp: [Platform, ModuleContracts, FrameworkHttp, OtherFacades]
+        ModuleContracts: [ModuleDomain, Platform]
+        ModuleDomain: [ModuleContracts, Platform]
+        ModuleModels:
+            [ModuleDomain, ModuleContracts, Platform, DbFacade, OtherFacades]
+        ModuleApplication:
+            [
+                ModuleDomain,
+                ModuleModels,
+                ModuleContracts,
+                Platform,
+                DbFacade,
+                OtherFacades,
+            ]
+        ModuleInfrastructure:
+            [
+                ModuleApplication,
+                ModuleDomain,
+                ModuleModels,
+                ModuleContracts,
+                Platform,
+                HttpClient,
+                DbFacade,
+                OtherFacades,
+            ]
+        ModuleHttp:
+            [
+                ModuleApplication,
+                ModuleDomain,
+                ModuleModels,
+                ModuleContracts,
+                Platform,
+                FrameworkHttp,
+                OtherFacades,
+            ]

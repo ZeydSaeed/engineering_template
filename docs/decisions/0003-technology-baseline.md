@@ -33,8 +33,10 @@ chasing novelty.
 - PostgreSQL 18 for development, CI and production.
 - Redis for cache, queue and locks; the choice between Redis and Valkey is a
   later ADR. Locally the database drivers are used until one is installed.
-- React 19, Inertia 3, TypeScript strict, Tailwind CSS 4, the official Vite.
-- Pest, Larastan, Pint, ESLint, Prettier, Playwright, k6.
+- React 19, Inertia 3, TypeScript strict, Tailwind CSS 4, and the starter
+  kit's Vite+ toolchain with Node 24 LTS (ADR-0011 amends this line).
+- Pest 5, Larastan (level 8), Pint, deptrac, oxlint/oxfmt through Vite+,
+  Playwright, k6.
 
 CI runs the same PostgreSQL major version as production.
 

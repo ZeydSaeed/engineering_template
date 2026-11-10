@@ -1,4 +1,5 @@
 /.phpunit.cache
+/.deptrac.cache
 # Portable toolchain for this workspace (scripts/env.ps1).
 /.tools
 /bootstrap/ssr

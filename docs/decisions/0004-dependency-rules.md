@@ -26,8 +26,8 @@ Option 3. Rules:
 1. `Http → Application → Domain`. `Infrastructure` implements interfaces
    declared in `Domain` or `Application`.
 2. `Domain` does not use `Illuminate\Http`, facades or `DB`.
-3. A module never uses another module's `Models` or `Infrastructure`; only its
-   `Contracts` and events.
+3. A module uses another module only through its `Contracts` namespace
+   (interfaces, DTOs and events); everything else in a module is private.
 4. `Platform` never uses `Modules\*`.
 5. Controllers do not use `DB` or raw queries.
 6. `env()` only in `config/`; models do not call `app()` or `resolve()`.
