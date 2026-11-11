@@ -160,8 +160,10 @@ return [
     |
     */
 
+    // No public self-registration (ADR-0015): accounts are created by
+    // administrators. An application that needs it adds
+    // Features::registration() with its own page and tests.
     'features' => [
-        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

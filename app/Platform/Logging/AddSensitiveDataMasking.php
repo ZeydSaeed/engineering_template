@@ -16,10 +16,7 @@ class AddSensitiveDataMasking
         $monolog = $logger->getLogger();
 
         if ($monolog instanceof Monolog) {
-            /** @var list<string> $keys */
-            $keys = (array) config('platform.logging.masked_keys');
-
-            $monolog->pushProcessor(new MaskSensitiveData($keys));
+            $monolog->pushProcessor(MaskSensitiveData::fromConfig());
         }
     }
 }

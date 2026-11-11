@@ -2,7 +2,14 @@
 
 namespace App\Platform;
 
+use App\Platform\Access\AccessCatalog;
+use App\Platform\Access\Contracts\HoldsRoles;
+use App\Platform\Audit\RecordAuthenticationEvents;
+use App\Platform\Console\VerifyAuditChainCommand;
 use App\Platform\Environment\EnvironmentValidator;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class PlatformServiceProvider extends ServiceProvider
@@ -10,6 +17,13 @@ class PlatformServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->validateEnvironment();
+        $this->registerPermissions();
+
+        Event::subscribe(RecordAuthenticationEvents::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([VerifyAuditChainCommand::class]);
+        }
     }
 
     /**
@@ -27,5 +41,16 @@ class PlatformServiceProvider extends ServiceProvider
         }
 
         $this->app->make(EnvironmentValidator::class)->assertSafe();
+    }
+
+    /**
+     * One Gate ability per permission, so routes say `can:roles.manage` and
+     * the frontend receives plain strings (ADR-0014).
+     */
+    private function registerPermissions(): void
+    {
+        foreach (AccessCatalog::permissions() as $permission) {
+            Gate::define((string) $permission->value, fn (Authenticatable $user): bool => $user instanceof HoldsRoles && $user->hasPermission($permission));
+        }
     }
 }

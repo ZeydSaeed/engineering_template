@@ -47,7 +47,7 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    'encrypt' => env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -127,7 +127,9 @@ return [
     |
     */
 
-    'cookie' => env(
+    // Over HTTPS the name takes the __Host- prefix: browsers then refuse the
+    // cookie unless it is Secure, host-only and on "/" (ADR-0015).
+    'cookie' => (env('SESSION_SECURE_COOKIE') ? '__Host-' : '').env(
         'SESSION_COOKIE',
         Str::slug((string) env('APP_NAME', 'laravel')).'-session',
     ),

@@ -4,7 +4,7 @@ namespace App\Platform\Environment;
 
 /**
  * Settings that must hold before a non-local environment serves anything
- * (ADR-0010). HSTS joins this list with the security headers in Phase 2.
+ * (ADR-0010, ADR-0013, ADR-0015, ADR-0016).
  */
 class EnvironmentValidator
 {
@@ -29,6 +29,28 @@ class EnvironmentValidator
 
         if (! str_starts_with((string) config('app.url'), 'https://')) {
             $problems[] = 'APP_URL must use https://.';
+        }
+
+        if (config('session.encrypt') !== true) {
+            $problems[] = 'SESSION_ENCRYPT must be true.';
+        }
+
+        if (filled(config('session.domain')) || config('session.path') !== '/') {
+            $problems[] = 'SESSION_DOMAIN must be empty and SESSION_PATH "/" (host-only __Host- cookie).';
+        }
+
+        if (config('platform.security.hsts') !== true) {
+            $problems[] = 'PLATFORM_HSTS must be true.';
+        }
+
+        if (config('platform.security.csp') !== true) {
+            $problems[] = 'PLATFORM_CSP must be true.';
+        }
+
+        $auditKey = (string) config('platform.audit.hmac_key');
+
+        if (strlen($auditKey) < 32 || $auditKey === (string) config('app.key')) {
+            $problems[] = 'AUDIT_HMAC_KEY must be set, at least 32 characters, and differ from APP_KEY.';
         }
 
         $database = (string) config('database.connections.'.config('database.default').'.database');

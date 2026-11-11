@@ -1,0 +1,57 @@
+Phase 2 verification, 2026-11-11, local workstation.
+PHP 8.5.12, Node 24.22.2, PostgreSQL 18 (local service, session time zone
+forced to UTC by the connection; the server default is Asia/Baghdad).
+
+== composer ci:check (SQLite in memory)
+oxfmt: all files formatted; oxlint: no warnings
+Pint: passed; PHPStan level 8: 0 errors; deptrac: 0 violations
+Pest: 114 tests, 106 passed, 8 skipped (PostgreSQL-only), 301 assertions
+exit 0
+
+== vendor/bin/pest --configuration=phpunit.pgsql.xml (engineering_template_testing, as template_owner)
+Pest: 114 tests, 114 passed, 316 assertions, 0 skipped
+Includes: session time zone equals app time zone; no timestamp without time
+zone; no json columns; every foreign key indexed; UPDATE, DELETE and
+TRUNCATE on audit_events rejected by the trigger; template_app holds
+INSERT but not UPDATE, DELETE or TRUNCATE on audit_events.
+
+== Migrations on engineering_template (development), as template_owner
+migrate: 7 applied; migrate:reset: 7 rolled back; migrate: 7 applied; exit 0
+
+== Runtime role on engineering_template (application connected as template_app)
+template_app SELECT on audit_events: yes
+template_app INSERT on audit_events: yes
+template_app UPDATE on audit_events: no
+template_app DELETE on audit_events: no
+template_app TRUNCATE on audit_events: no
+template_app UPDATE on users: yes
+template_app CREATE in schema public: no
+audit triggers: audit_events_append_only, audit_events_no_truncate
+
+== npm run build
+built (exit 0) after removing registration (see below)
+
+== Dependency audits
+npm audit --omit=dev --audit-level=high: below threshold; 1 low advisory in
+@babel/core (build tooling, GHSA-4x5r-pxfx-6jf8), fix available.
+composer audit: NOT RUN at the end of the phase (Packagist unreachable,
+curl timeout); last successful run earlier the same day: no advisories.
+
+== Defects found and fixed during the phase
+1. PostgreSQL session time zone (Asia/Baghdad) differed from the
+   application's (UTC). Times Laravel writes without an offset were shifted
+   three hours: a password reset token issued a second earlier was already
+   expired. Fixed with 'timezone' => 'UTC' on the pgsql connection; guarded
+   by a test.
+2. migrate:fresh drops tables but not functions, so the audit migration's
+   CREATE FUNCTION failed on every second run (RefreshDatabase). Fixed with
+   CREATE OR REPLACE FUNCTION. The failed runs had also left connections
+   open until the owner role's limit (10) was reached; the limit was not
+   raised and the problem did not recur.
+3. Registration as a runtime switch broke the frontend build: route helpers
+   are generated from registered routes, and register.tsx imported a helper
+   that no longer existed. Registration is now removed in code (ADR-0015).
+4. scripts/db/create-local-databases.ps1 failed after creating the roles,
+   when writing a credential file that did not exist yet (an empty array
+   became $null). Fixed and unit-checked on scratch files; the second run
+   succeeded and rotated all three passwords.

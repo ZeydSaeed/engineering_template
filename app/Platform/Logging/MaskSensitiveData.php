@@ -26,6 +26,16 @@ class MaskSensitiveData implements ProcessorInterface
         }
     }
 
+    /**
+     * With the keys listed in config/platform.php.
+     */
+    public static function fromConfig(): self
+    {
+        $keys = array_filter((array) config('platform.logging.masked_keys'), is_string(...));
+
+        return new self(array_values($keys));
+    }
+
     public function __invoke(LogRecord $record): LogRecord
     {
         return $record->with(
@@ -38,7 +48,7 @@ class MaskSensitiveData implements ProcessorInterface
      * @param  array<array-key, mixed>  $data
      * @return array<array-key, mixed>
      */
-    private function mask(array $data): array
+    public function mask(array $data): array
     {
         foreach ($data as $key => $value) {
             if (is_string($key) && isset($this->keys[self::normalize($key)])) {

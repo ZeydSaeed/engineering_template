@@ -36,3 +36,81 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+  # The same suite on PostgreSQL 18, with a runtime role set up like the
+  # local one (scripts/db/create-local-databases.ps1), so the privilege and
+  # append-only tests run too.
+  postgres:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: engineering_template_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-only-not-a-secret
+      DB_APP_ROLE: template_app
+      PGPASSWORD: ci-only-not-a-secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql
+          tools: composer:v2
+          coverage: none
+
+      - name: Runtime role
+        run: |
+          psql -h 127.0.0.1 -U postgres -d engineering_template_testing -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE template_app LOGIN;
+          GRANT USAGE ON SCHEMA public TO template_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO template_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO template_app;
+          SQL
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      # Page tests render the HTML shell, which needs the Vite manifest.
+      - name: Install
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+          npm ci
+          npm run build
+
+      - name: Migrations apply cleanly (migrate, roll back, migrate)
+        env:
+          DB_CONNECTION: pgsql
+          DB_DATABASE: engineering_template_testing
+        run: |
+          php artisan migrate --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
+
+      - name: Pest on PostgreSQL
+        run: composer test:pgsql

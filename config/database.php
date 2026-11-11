@@ -97,6 +97,10 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // The session reads times without an offset in this zone. It must
+            // match config('app.timezone') (UTC), whatever the server's own
+            // setting, or such times shift by the server's offset.
+            'timezone' => 'UTC',
         ],
 
         'sqlsrv' => [

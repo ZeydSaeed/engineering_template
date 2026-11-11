@@ -1,5 +1,8 @@
 <?php
 
+use App\Access\Permission;
+use App\Access\Role;
+
 /*
 |--------------------------------------------------------------------------
 | Platform
@@ -54,6 +57,68 @@ return [
             'trim',
             explode(',', (string) env('PLATFORM_DENIED_DATABASES', '')),
         ))),
+
+        // The runtime (DML-only) PostgreSQL role. Migrations revoke rights
+        // from it where a table must stay append-only (ADR-0012, ADR-0013).
+        'app_role' => env('DB_APP_ROLE'),
+
+        // The only PostgreSQL database tests may connect to (tests/TestCase.php).
+        'testing_name' => env('DB_TESTING_DATABASE', 'engineering_template_testing'),
+    ],
+
+    /*
+    | Response headers (ADR-0016). Scripts run only from this origin or with
+    | the per-request nonce. Styles allow 'unsafe-inline' because Radix UI and
+    | toast components set inline styles at runtime.
+    */
+    'security' => [
+        'hsts' => (bool) env('PLATFORM_HSTS', env('APP_ENV') === 'production'),
+        // Start low on a new host (300, then 86400) and raise to a year.
+        'hsts_max_age' => (int) env('PLATFORM_HSTS_MAX_AGE', 31536000),
+        'csp' => (bool) env('PLATFORM_CSP', true),
+        'csp_sources' => [
+            'style-src' => ["'self'", "'unsafe-inline'", 'https://fonts.bunny.net'],
+            'font-src' => ["'self'", 'https://fonts.bunny.net', 'data:'],
+            'img-src' => ["'self'", 'data:', 'blob:'],
+            'connect-src' => ["'self'"],
+        ],
+
+        'rate_limits' => [
+            // Per e-mail address and IP, per minute.
+            'login_per_minute' => (int) env('PLATFORM_LOGIN_PER_MINUTE', 5),
+            // Per IP across all addresses, per hour.
+            'login_per_ip_per_hour' => (int) env('PLATFORM_LOGIN_PER_IP_PER_HOUR', 100),
+            'two_factor_per_minute' => (int) env('PLATFORM_TWO_FACTOR_PER_MINUTE', 5),
+        ],
+    ],
+
+    /*
+    | Identity defaults (ADR-0015).
+    */
+    'identity' => [
+        // Every signed-in user must have a confirmed authenticator app or a
+        // passkey before using anything but the enrolment pages.
+        'require_second_factor' => (bool) env('PLATFORM_REQUIRE_SECOND_FACTOR', true),
+    ],
+
+    /*
+    | Roles and permissions (ADR-0014). The application owns both enums; the
+    | platform registers one Gate per permission and guards the last
+    | administrator.
+    */
+    'access' => [
+        'roles' => Role::class,
+        'permissions' => Permission::class,
+        'administrator_role' => 'administrator',
+        'manage_permission' => 'roles.manage',
+    ],
+
+    /*
+    | Audit trail (ADR-0013). The HMAC key chains each record to the previous
+    | one; it is separate from APP_KEY and never stored in the database.
+    */
+    'audit' => [
+        'hmac_key' => env('AUDIT_HMAC_KEY'),
     ],
 
 ];
