@@ -1,5 +1,6 @@
 <?php
 
+use App\Platform\Observability\PlatformMetrics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,11 @@ it('queues a job on Redis and runs it on a worker', function () {
     dispatch(new RedisProbeJob($marker));
 
     expect(Redis::connection()->llen('queues:default'))->toBe(1);
+
+    // The backlog and the age of the oldest job are visible to monitoring.
+    expect(app(PlatformMetrics::class)->render())
+        ->toContain('platform_queue_jobs{queue="default"} 1')
+        ->toMatch('/platform_queue_oldest_job_age_seconds\{queue="default"\} \d+/');
 
     Artisan::call('queue:work', ['connection' => 'redis', '--queue' => 'default', '--stop-when-empty' => true]);
 

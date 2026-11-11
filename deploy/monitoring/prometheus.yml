@@ -1,0 +1,39 @@
+# Prometheus scrape configuration for one host (ADR-0023). Every exporter
+# listens on 127.0.0.1 only; nothing here is reachable from outside.
+global:
+    scrape_interval: 30s
+    evaluation_interval: 30s
+
+rule_files:
+    - alerts.yml
+
+alerting:
+    alertmanagers:
+        - static_configs:
+              - targets: ['127.0.0.1:9093']
+
+scrape_configs:
+    # Application metrics (platform_*), allowed from 127.0.0.1 by the app.
+    - job_name: app
+      scheme: https
+      metrics_path: /metrics
+      tls_config:
+          server_name: HOST
+      static_configs:
+          - targets: ['127.0.0.1:443']
+
+    - job_name: node
+      static_configs:
+          - targets: ['127.0.0.1:9100']
+
+    - job_name: postgres
+      static_configs:
+          - targets: ['127.0.0.1:9187']
+
+    - job_name: redis
+      static_configs:
+          - targets: ['127.0.0.1:9121']
+
+    - job_name: php-fpm
+      static_configs:
+          - targets: ['127.0.0.1:9253']

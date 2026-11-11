@@ -3,6 +3,10 @@
 use App\Platform\Jobs\QueueSettings;
 use Illuminate\Support\Facades\Schedule;
 
+// Encrypted backup set every night (ADR-0022); restore drills are run by an
+// operator on a separate machine with the private keys.
+Schedule::command('platform:backup', ['daily'])->dailyAt('02:00')->withoutOverlapping()->onOneServer();
+
 // A broken chain means the audit trail was altered (ADR-0013).
 Schedule::command('platform:audit-verify')->dailyAt('02:30')->withoutOverlapping()->onOneServer();
 

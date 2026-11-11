@@ -1,0 +1,177 @@
+# Prometheus alerting rules (ADR-0023). Every alert has a severity, a summary
+# and a runbook section that says what to check, what to do and how to know
+# it is fixed; tests/Feature/Platform/AlertRulesTest.php enforces this and
+# checks that every platform_* metric used here exists.
+#
+# critical: act now (data loss, outage, tampering). warning: act today.
+
+groups:
+    - name: application
+      rules:
+          - alert: ApplicationDown
+            expr: up{job="app"} == 0
+            for: 2m
+            labels:
+                severity: critical
+            annotations:
+                summary: The application stopped answering metrics scrapes.
+                runbook: docs/runbooks/application.md#applicationdown
+
+          - alert: QueueBacklog
+            expr: platform_queue_jobs > 100
+            for: 10m
+            labels:
+                severity: warning
+            annotations:
+                summary: Queue {{ $labels.queue }} has more than 100 jobs for 10 minutes.
+                runbook: docs/runbooks/application.md#queuebacklog
+
+          - alert: QueueStalled
+            expr: platform_queue_oldest_job_age_seconds > 600
+            for: 5m
+            labels:
+                severity: critical
+            annotations:
+                summary: The oldest job on {{ $labels.queue }} has waited over 10 minutes.
+                runbook: docs/runbooks/application.md#queuestalled
+
+          - alert: JobsFailing
+            expr: delta(platform_failed_jobs[1h]) > 0
+            labels:
+                severity: warning
+            annotations:
+                summary: Jobs failed after their last attempt in the past hour.
+                runbook: docs/runbooks/application.md#jobsfailing
+
+          - alert: OutboxMessagesDead
+            expr: platform_outbox_messages{status="dead"} > 0
+            labels:
+                severity: critical
+            annotations:
+                summary: Outbox messages were given up and their effects did not happen.
+                runbook: docs/runbooks/application.md#outboxmessagesdead
+
+          - alert: OutboxStalled
+            expr: platform_outbox_oldest_pending_age_seconds > 300
+            for: 5m
+            labels:
+                severity: warning
+            annotations:
+                summary: A due outbox message has waited over 5 minutes.
+                runbook: docs/runbooks/application.md#outboxstalled
+
+          - alert: FileScansStalled
+            expr: platform_files_oldest_pending_age_seconds > 1800
+            for: 10m
+            labels:
+                severity: warning
+            annotations:
+                summary: An uploaded file has waited over 30 minutes for its scan.
+                runbook: docs/runbooks/application.md#filescansstalled
+
+    - name: data
+      rules:
+          - alert: BackupMissing
+            expr: time() - platform_backup_last_success_timestamp_seconds{kind="daily"} > 26 * 3600
+            labels:
+                severity: critical
+            annotations:
+                summary: No successful daily backup for over 26 hours.
+                runbook: docs/runbooks/data.md#backupmissing
+
+          - alert: BackupFailed
+            expr: platform_backup_last_run_ok{kind="daily"} == 0
+            labels:
+                severity: critical
+            annotations:
+                summary: The last daily backup failed.
+                runbook: docs/runbooks/data.md#backupfailed
+
+          - alert: AuditChainBroken
+            expr: platform_audit_chain_ok == 0
+            labels:
+                severity: critical
+            annotations:
+                summary: The audit trail's hash chain does not verify; records were altered or removed.
+                runbook: docs/runbooks/data.md#auditchainbroken
+
+          - alert: AuditChainNotVerified
+            expr: time() - platform_audit_chain_last_verified_timestamp_seconds > 26 * 3600
+            labels:
+                severity: warning
+            annotations:
+                summary: The audit chain has not been verified for over 26 hours.
+                runbook: docs/runbooks/data.md#auditchainnotverified
+
+    - name: infrastructure
+      rules:
+          - alert: HostDown
+            expr: up{job="node"} == 0
+            for: 2m
+            labels:
+                severity: critical
+            annotations:
+                summary: The host exporter stopped answering.
+                runbook: docs/runbooks/infrastructure.md#hostdown
+
+          - alert: DiskSpaceLow
+            expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes < 0.15
+            for: 10m
+            labels:
+                severity: warning
+            annotations:
+                summary: Less than 15 % free on {{ $labels.mountpoint }}.
+                runbook: docs/runbooks/infrastructure.md#diskspacelow
+
+          - alert: MemoryLow
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+            for: 10m
+            labels:
+                severity: warning
+            annotations:
+                summary: Less than 10 % memory available.
+                runbook: docs/runbooks/infrastructure.md#memorylow
+
+          - alert: CpuSaturated
+            expr: avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) < 0.10
+            for: 15m
+            labels:
+                severity: warning
+            annotations:
+                summary: CPU over 90 % busy for 15 minutes.
+                runbook: docs/runbooks/infrastructure.md#cpusaturated
+
+          - alert: PostgresDown
+            expr: pg_up == 0
+            for: 1m
+            labels:
+                severity: critical
+            annotations:
+                summary: PostgreSQL is not reachable.
+                runbook: docs/runbooks/infrastructure.md#postgresdown
+
+          - alert: PostgresConnectionsHigh
+            expr: sum(pg_stat_activity_count) / scalar(pg_settings_max_connections) > 0.8
+            for: 5m
+            labels:
+                severity: warning
+            annotations:
+                summary: Over 80 % of PostgreSQL connections in use.
+                runbook: docs/runbooks/infrastructure.md#postgresconnectionshigh
+
+          - alert: FpmWorkersExhausted
+            expr: increase(phpfpm_max_children_reached[10m]) > 0
+            labels:
+                severity: warning
+            annotations:
+                summary: PHP-FPM reached its worker limit; requests queued.
+                runbook: docs/runbooks/infrastructure.md#fpmworkersexhausted
+
+          - alert: RedisDown
+            expr: redis_up == 0
+            for: 1m
+            labels:
+                severity: critical
+            annotations:
+                summary: Redis is not reachable; queues and cache are affected.
+                runbook: docs/runbooks/infrastructure.md#redisdown

@@ -1,0 +1,70 @@
+Phase 6 verification - backups, restore drill, monitoring
+Machine: local development PC (Windows 10, PostgreSQL 18, PHP 8.5.12, age v1.3.2)
+Dates: 2026-11-11/12 (stamps below are UTC)
+
+Tools
+- age v1.3.2 portable in .tools\age (official release archive, SHA-256 checked).
+- Three key pairs (database, files, secrets) generated outside the repository,
+  in the user profile, folder readable by the current user only.
+  Round trip for each key: OK. Decrypting with another class's key: refused.
+
+Data at backup time (development database)
+- 15 tables; users 1,000; audit_events 53,579; stored_files 5
+  (seeded through FileStore; an executable disguised as script.pdf was rejected).
+
+Run 1 - backup manual/20261111T212512Z
+- platform:backup manual: 2.8 s, exit 0.
+- Manifest: 15 tables, table_data_entries 15 (pg_restore --list of the stream),
+  audit head, 5 stored files, SHA-256 and size per artifact.
+- No plain dump on disk: the dump streams into age and pg_restore --list.
+- platform:restore-drill into engineering_template_restore: PASSED
+  checksums match; database restored 2.6 s; row counts match in 15 tables;
+  audit chain intact to the manifest head; 5 files' SHA-256 match;
+  secrets decrypt with their own key; total 10.5 s.
+
+Run 2 - after the secret_files validation change, backup manual/20261111T214848Z
+- platform:backup manual: 3.6 s, exit 0.
+- platform:restore-drill: PASSED (restore 3.7 s, total 18.1 s, backup age 0.01 h).
+
+Negative controls (on copies of a set, removed afterwards)
+- One byte of database.dump.age changed: "Checksum mismatch", exit 1, nothing restored.
+- Same byte changed and the manifest checksum updated to match:
+  age "failed to decrypt and authenticate payload chunk", exit 1.
+- Drill target equal to the application database, or a name without
+  "restore": refused (BackupSafeguardsTest).
+- Two classes with the same key: backup refused (BackupSafeguardsTest).
+- secret_files entries outside the application root (absolute, drive, "..",
+  empty, non-string): refused (BackupSafeguardsTest).
+
+Defects found and fixed during the phase
+- Manifest row counts were read after the dump, so a write in between made
+  them disagree: now one exported snapshot (pg_export_snapshot +
+  pg_dump --snapshot) serves both.
+- Backup age printed negative (signed Carbon 3 difference): fixed.
+- platform_queue_oldest_job_age_seconds existed only for the database
+  driver, so QueueStalled could never fire with Redis: now always exported,
+  with Redis support (found by AlertRulesTest).
+- secret_files was used from config unchecked (found by PHPStan): validated.
+
+Temporary restore database
+- engineering_template_restore created for the drills and dropped afterwards
+  (DROP DATABASE ... WITH (FORCE)); remaining: engineering_template,
+  engineering_template_testing.
+
+Test suites (after all changes)
+- composer ci:check (SQLite): format, lint, tsc, Pint, PHPStan level 8,
+  deptrac 0 violations, Pest 198 tests: 185 passed, 13 skipped
+  (PostgreSQL/Redis/ClamAV only), 0 failed, 703 assertions.
+- composer test:pgsql: 198 tests: 196 passed, 2 skipped (Redis, ClamAV: run
+  in CI), 0 failed, 750 assertions.
+- Includes AlertRulesTest (every alert has severity, summary, runbook
+  section with Meaning/Check/Act/Verify, and uses only exported platform_*
+  metrics), MetricsAndReadinessTest, BackupSafeguardsTest, DeployTemplatesTest
+  (probes and /metrics local-only in Nginx).
+
+NOT TESTED
+- Prometheus/Alertmanager and the exporters running (no stack installed
+  locally); promtool check of alerts.yml.
+- Point-in-time recovery (pgBackRest, WAL archiving).
+- Off-host copies of backup sets.
+- Restore on a separate machine.

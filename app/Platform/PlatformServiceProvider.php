@@ -5,7 +5,10 @@ namespace App\Platform;
 use App\Platform\Access\AccessCatalog;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Audit\RecordAuthenticationEvents;
+use App\Platform\Console\BackupCommand;
+use App\Platform\Console\HealthCommand;
 use App\Platform\Console\RelayOutboxCommand;
+use App\Platform\Console\RestoreDrillCommand;
 use App\Platform\Console\SweepFilesCommand;
 use App\Platform\Console\VerifyAuditChainCommand;
 use App\Platform\Environment\EnvironmentValidator;
@@ -61,7 +64,10 @@ class PlatformServiceProvider extends ServiceProvider
         Event::subscribe(RecordAuthenticationEvents::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditChainCommand::class, RelayOutboxCommand::class, SweepFilesCommand::class]);
+            $this->commands([
+                VerifyAuditChainCommand::class, RelayOutboxCommand::class, SweepFilesCommand::class,
+                BackupCommand::class, RestoreDrillCommand::class, HealthCommand::class,
+            ]);
         }
     }
 

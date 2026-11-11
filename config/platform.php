@@ -133,6 +133,9 @@ return [
         'slow_query_ms' => (int) env('PLATFORM_SLOW_QUERY_MS', 250),
         // All statements of one request together slower than this.
         'slow_request_db_ms' => (int) env('PLATFORM_SLOW_REQUEST_DB_MS', 1000),
+        // /metrics (ADR-0023): from these addresses, or with this bearer token.
+        'metrics_allowed_ips' => ['127.0.0.1', '::1'],
+        'metrics_token' => env('METRICS_TOKEN'),
     ],
 
     /*
@@ -203,6 +206,50 @@ return [
             // 'example' => ['base_url' => 'https://api.example.com', 'connect_timeout' => 3,
             //     'timeout' => 10, 'retries' => 2, 'failure_threshold' => 5, 'cooldown' => 60],
         ],
+    ],
+
+    /*
+    | Backups and restore drills (ADR-0022). Each class of data is encrypted
+    | to its own age recipient, so one leaked key exposes one class. Only
+    | public recipients live on the server; the private identities are needed
+    | for restores only and are kept offline.
+    */
+    'backup' => [
+        'directory' => env('BACKUP_DIR', storage_path('app/private/backups')),
+        'keep' => ['daily' => 7, 'weekly' => 4, 'manual' => 10],
+        'recipients' => [
+            // An age1… public key, or the path of a file holding one.
+            'database' => env('BACKUP_RECIPIENT_DATABASE'),
+            'files' => env('BACKUP_RECIPIENT_FILES'),
+            'secrets' => env('BACKUP_RECIPIENT_SECRETS'),
+        ],
+        'tools' => [
+            'age' => env('BACKUP_AGE', 'age'),
+            'pg_dump' => env('BACKUP_PG_DUMP', 'pg_dump'),
+            'pg_restore' => env('BACKUP_PG_RESTORE', 'pg_restore'),
+            'tar' => env('BACKUP_TAR', 'tar'),
+        ],
+        // The read-only backup role (ADR-0012).
+        'database' => [
+            'username' => env('BACKUP_DB_USERNAME'),
+            'password' => env('BACKUP_DB_PASSWORD'),
+        ],
+        // Paths relative to the application root.
+        'secret_files' => ['.env'],
+        'restore' => [
+            // A separate, disposable database; never the application's own.
+            'database' => env('RESTORE_DB_DATABASE', 'engineering_template_restore'),
+            'username' => env('RESTORE_DB_USERNAME'),
+            'password' => env('RESTORE_DB_PASSWORD'),
+            // Private identities, needed only for a restore.
+            'identities' => [
+                'database' => env('BACKUP_IDENTITY_DATABASE'),
+                'files' => env('BACKUP_IDENTITY_FILES'),
+                'secrets' => env('BACKUP_IDENTITY_SECRETS'),
+            ],
+        ],
+        // A backup older than this is an alert (RPO, docs/operations/recovery.md).
+        'max_age_hours' => (int) env('BACKUP_MAX_AGE_HOURS', 26),
     ],
 
     /*

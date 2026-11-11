@@ -48,7 +48,7 @@ it('runs only the front controller and keeps probes local', function () {
     $nginx = (string) file_get_contents(base_path('deploy/nginx/app.conf'));
 
     expect($nginx)->toContain('location ~ \.php$ {'."\n".'        return 404;')
-        ->toContain('location = /up {'."\n".'        allow 127.0.0.1;')
+        ->toContain('location ~ ^/(up|health/ready|metrics)$ {'."\n".'        allow 127.0.0.1;')
         ->toContain('ssl_reject_handshake on;')
         ->toContain('server_tokens off;');
 });
