@@ -3,15 +3,19 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Platform\Identity\UserScopedTwoFactorProvider;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use PragmaRX\Google2FA\Google2FA;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -20,7 +24,11 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Used codes are remembered per user, not per code (ADR-0015).
+        $this->app->singleton(TwoFactorAuthenticationProvider::class, fn ($app) => new UserScopedTwoFactorProvider(
+            $app->make(Google2FA::class),
+            $app->make(Repository::class),
+        ));
     }
 
     /**

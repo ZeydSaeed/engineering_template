@@ -35,13 +35,26 @@ return [
             'driver' => 'sync',
         ],
 
+        // after_commit: a job dispatched inside a transaction is queued only
+        // when it commits, so a worker never sees rolled-back data (ADR-0019).
+        // retry_after must exceed the longest job on the connection, so long
+        // queues (imports, exports) have their own *_long connection.
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
-            'after_commit' => false,
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 180),
+            'after_commit' => true,
+        ],
+
+        'database_long' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'imports',
+            'retry_after' => (int) env('DB_QUEUE_LONG_RETRY_AFTER', 960),
+            'after_commit' => true,
         ],
 
         'beanstalkd' => [
@@ -68,9 +81,18 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 180),
             'block_for' => null,
-            'after_commit' => false,
+            'after_commit' => true,
+        ],
+
+        'redis_long' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'imports',
+            'retry_after' => (int) env('REDIS_QUEUE_LONG_RETRY_AFTER', 960),
+            'block_for' => null,
+            'after_commit' => true,
         ],
 
         'deferred' => [

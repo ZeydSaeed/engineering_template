@@ -1,0 +1,27 @@
+# Relays outbox messages within about a second (ADR-0019). The scheduler
+# also runs one relay pass every minute as a fallback, so messages are
+# delivered even while this service is down. Several relays may run at once
+# (FOR UPDATE SKIP LOCKED).
+
+[Unit]
+Description=APP outbox relay
+After=network.target postgresql.service
+
+[Service]
+User=APP
+Group=APP
+WorkingDirectory=/srv/APP/current
+ExecStart=/usr/bin/php /srv/APP/current/artisan platform:outbox-relay --loop --sleep=1 --max-time=3600
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+MemoryMax=256M
+CPUQuota=50%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/APP/shared/storage
+
+[Install]
+WantedBy=multi-user.target

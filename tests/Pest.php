@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 /*
@@ -14,3 +15,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)->in('Feature');
+
+// Real commits, so other processes see the data: migrated afresh per test
+// instead of wrapped in a transaction.
+pest()->extend(TestCase::class)->use(DatabaseMigrations::class)->in('Concurrency');

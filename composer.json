@@ -69,7 +69,7 @@
             "@test"
         ],
         "types:check": [
-            "phpstan analyse"
+            "phpstan analyse --memory-limit=1G"
         ],
         "arch": [
             "deptrac analyse --no-progress"

@@ -1,0 +1,44 @@
+Phase 4 verification, 2026-11-12, local workstation (Windows 10, PHP 8.5.12,
+PostgreSQL 18.2 local service). Concurrency tests start separate PHP
+processes (tests/Concurrency/worker.php) that wait for a shared start time,
+against engineering_template_testing.
+
+== tests/Concurrency on PostgreSQL (vendor/bin/pest --configuration=phpunit.pgsql.xml tests/Concurrency)
+3 tests, 3 passed, 32 assertions, 29.4 s
+1. Two administrators remove each other at the same moment, 5 rounds:
+   exactly one succeeds each round, one administrator remains, the other
+   request is refused (AuthorizationException or DomainRuleViolation); the
+   audit chain is intact afterwards.
+2. Six processes grant the same role to the same user at once: one
+   role_assignments row, one access.role_assigned audit record, chain intact.
+3. 300 outbox messages, four relays with batches of 25: 300 dispatched in
+   total, 300 jobs queued, every message marked dispatched. 50 of them were
+   then delivered a second time; three queue workers processed all 350
+   jobs: 300 effects, 300 processed_messages rows, no failed jobs.
+
+== Negative control: does test 1 catch the race?
+RevokeRole was changed for one run only: no lock on the target, no lock on
+the administrator assignments, no re-check of the actor's permission under
+the locks. Result:
+  failed, round 1: "Failed asserting that actual size 2 matches expected size 1"
+  (both administrators succeeded; no administrator would have remained).
+The file was restored; git diff of RevokeRole.php empty afterwards.
+
+== Defects found and fixed during the phase
+1. Outbox topics contain dots (test.counted); looking a topic up with
+   config("platform.outbox.handlers.{$topic}") read the dot as nesting and
+   never found the handler. Topics are now looked up as plain keys
+   (Outbox::handlerFor).
+2. The relay's first draft deferred the queue push to after the response.
+   With after_commit on, a push failing after the relay's commit would have
+   lost a message already marked as dispatched. The relay now pushes before
+   its commit, in a savepoint per message.
+3. Fortify keyed its used-code store by the code alone; two users typing the
+   same code in one window collided (Phase 3 finding). Replaced by
+   UserScopedTwoFactorProvider (secret + code); TwoFactorCodeReuseTest shows
+   Fortify's provider refusing and ours accepting the second user, and ours
+   still refusing a replay by the same user.
+
+== Not run locally
+RedisQueueTest (skipped without REDIS_QUEUE_TEST=1; runs in CI against a
+Redis 7 service).

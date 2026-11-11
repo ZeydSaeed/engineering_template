@@ -1,0 +1,36 @@
+# One worker pool per queue (ADR-0019). Copy per application, replace APP
+# and paths, then: systemctl enable --now APP-queue@notifications.service
+# (one instance per queue in config/platform.php; several instances of one
+# queue: APP-queue@files-1, APP-queue@files-2 with --queue set explicitly).
+#
+# Graceful stop: systemd sends SIGTERM, Laravel finishes the running job and
+# exits. TimeoutStopSec must exceed the longest job timeout of the queue
+# (900 s for imports and exports), or the job is killed and retried later.
+
+[Unit]
+Description=APP queue worker (%i)
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=APP
+Group=APP
+WorkingDirectory=/srv/APP/current
+ExecStart=/usr/bin/php /srv/APP/current/artisan queue:work --queue=%i --sleep=3 --max-time=3600 --memory=256
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=960
+
+# Limits: one pool cannot starve the web server or the others.
+MemoryMax=512M
+CPUQuota=100%
+
+# Hardening.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/APP/shared/storage
+
+[Install]
+WantedBy=multi-user.target

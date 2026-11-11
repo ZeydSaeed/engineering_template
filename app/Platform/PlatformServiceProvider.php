@@ -5,17 +5,21 @@ namespace App\Platform;
 use App\Platform\Access\AccessCatalog;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Audit\RecordAuthenticationEvents;
+use App\Platform\Console\RelayOutboxCommand;
 use App\Platform\Console\VerifyAuditChainCommand;
 use App\Platform\Environment\EnvironmentValidator;
 use App\Platform\Observability\QueryMetrics;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\QueueBusy;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 
 class PlatformServiceProvider extends ServiceProvider
@@ -30,12 +34,38 @@ class PlatformServiceProvider extends ServiceProvider
         $this->validateEnvironment();
         $this->registerPermissions();
         $this->watchQueries();
+        $this->watchQueues();
 
         Event::subscribe(RecordAuthenticationEvents::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditChainCommand::class]);
+            $this->commands([VerifyAuditChainCommand::class, RelayOutboxCommand::class]);
         }
+    }
+
+    /**
+     * Permanent job failures and queue backlogs reach the log (ADR-0019).
+     * Never the job's payload or the exception message, which may carry data.
+     */
+    private function watchQueues(): void
+    {
+        Queue::failing(function (JobFailed $event): void {
+            Log::error('Job failed after its last attempt.', [
+                'job' => $event->job->resolveName(),
+                'uuid' => $event->job->uuid(),
+                'queue' => $event->job->getQueue(),
+                'connection' => $event->connectionName,
+                'exception' => $event->exception::class,
+            ]);
+        });
+
+        Event::listen(QueueBusy::class, function (QueueBusy $event): void {
+            Log::warning('Queue backlog above its limit.', [
+                'connection' => $event->connectionName,
+                'queue' => $event->queue,
+                'size' => $event->size,
+            ]);
+        });
     }
 
     /**

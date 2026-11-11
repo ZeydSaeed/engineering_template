@@ -136,6 +136,35 @@ return [
     ],
 
     /*
+    | Queues by workload (ADR-0019). One worker pool per queue, so slow work
+    | (scanning, PDFs, imports) never delays notifications or ordinary jobs.
+    | timeout: seconds one attempt may run; tries: attempts in total;
+    | backoff: seconds before each retry; long: runs on the *_long connection,
+    | whose retry_after covers the timeout.
+    */
+    'queues' => [
+        'default' => ['timeout' => 60, 'tries' => 3, 'backoff' => [10, 60, 300], 'long' => false],
+        'notifications' => ['timeout' => 30, 'tries' => 5, 'backoff' => [10, 60, 300, 900], 'long' => false],
+        'outbox' => ['timeout' => 60, 'tries' => 5, 'backoff' => [10, 60, 300, 900], 'long' => false],
+        'files' => ['timeout' => 120, 'tries' => 3, 'backoff' => [30, 120, 600], 'long' => false],
+        'pdf' => ['timeout' => 120, 'tries' => 2, 'backoff' => [30], 'long' => false],
+        'imports' => ['timeout' => 900, 'tries' => 1, 'backoff' => [], 'long' => true],
+        'exports' => ['timeout' => 900, 'tries' => 2, 'backoff' => [120], 'long' => true],
+    ],
+
+    /*
+    | Transactional outbox (ADR-0019): topic => job class that handles it.
+    | Messages are written in the same transaction as the change and relayed
+    | to the queue afterwards; a failed relay is retried with these delays.
+    */
+    'outbox' => [
+        'handlers' => [],
+        'relay_batch' => 100,
+        'max_attempts' => 10,
+        'backoff' => [5, 30, 120, 600, 1800],
+    ],
+
+    /*
     | Local load tests (docs/operations/performance-testing.md). The
     | synthetic-data seeder runs only locally and only on this database.
     */
