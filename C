@@ -1,0 +1,1 @@
+{"worker":"w0","writes":250,"elapsed_ms":846.6,"p50_ms":2.99,"p95_ms":4.44,"max_ms":81.43}

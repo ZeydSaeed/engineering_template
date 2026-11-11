@@ -5,6 +5,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Platform\Http\Middleware\AssignRequestId;
 use App\Platform\Http\Middleware\RequireSecondFactor;
 use App\Platform\Http\Middleware\SecurityHeaders;
+use App\Platform\Http\Middleware\ServerTiming;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Outermost, so error responses carry the id and the headers too.
-        $middleware->prepend([AssignRequestId::class, SecurityHeaders::class]);
+        $middleware->prepend([AssignRequestId::class, ServerTiming::class, SecurityHeaders::class]);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

@@ -1,0 +1,7 @@
+Audit write benchmark, 2026-11-11T16:13:37, PHP 8.5.12, 250 writes per process
+
+processes=1 total_writes=250 wall_s=1.63 writes_per_s=153.1 p50_ms=3.24 p95_ms_worst=6.26 max_ms=244.05
+processes=4 total_writes=1000 wall_s=3.9 writes_per_s=256.6 p50_ms=9.83 p95_ms_worst=14.76 max_ms=176.92
+processes=8 total_writes=2000 wall_s=8.62 writes_per_s=232 p50_ms=21.64 p95_ms_worst=39 max_ms=547.67
+
+chain after the runs: Audit chain intact (53505 records).

@@ -121,4 +121,28 @@ return [
         'hmac_key' => env('AUDIT_HMAC_KEY'),
     ],
 
+    /*
+    | Performance signals (ADR-0017).
+    */
+    'observability' => [
+        // Server-Timing header: application and database time, query count.
+        // Off in production unless asked for: timings help an attacker probe.
+        'server_timing' => (bool) env('PLATFORM_SERVER_TIMING', env('APP_ENV') !== 'production'),
+        // One statement slower than this is logged (SQL text only, never the
+        // bound values, which may hold personal data).
+        'slow_query_ms' => (int) env('PLATFORM_SLOW_QUERY_MS', 250),
+        // All statements of one request together slower than this.
+        'slow_request_db_ms' => (int) env('PLATFORM_SLOW_REQUEST_DB_MS', 1000),
+    ],
+
+    /*
+    | Local load tests (docs/operations/performance-testing.md). The
+    | synthetic-data seeder runs only locally and only on this database.
+    */
+    'performance' => [
+        'database' => env('PERF_DATABASE', 'engineering_template'),
+        'users' => (int) env('PERF_USERS', 1000),
+        'audit_events' => (int) env('PERF_AUDIT_EVENTS', 50000),
+    ],
+
 ];

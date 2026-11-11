@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -48,5 +49,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Model::shouldBeStrict(! app()->isProduction());
+
+        // N+1 queries throw during development and tests; in production they
+        // are logged instead of breaking the page (ADR-0017).
+        if (app()->isProduction()) {
+            Model::preventLazyLoading();
+            Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {
+                Log::warning('Lazy loading (N+1) detected.', ['model' => $model::class, 'relation' => $relation]);
+            });
+        }
     }
 }

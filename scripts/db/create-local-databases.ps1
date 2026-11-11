@@ -46,6 +46,9 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO $app, $backup;
 ALTER DEFAULT PRIVILEGES FOR ROLE $owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $app;
 ALTER DEFAULT PRIVILEGES FOR ROLE $owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO $app;
+-- Query statistics (ADR-0017); needs pg_stat_statements in shared_preload_libraries.
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+GRANT EXECUTE ON FUNCTION pg_stat_statements_reset(oid, oid, bigint, boolean) TO $owner;
 \connect postgres
 "@
 }
@@ -67,6 +70,7 @@ ALTER ROLE $app SET statement_timeout = '30s';
 ALTER ROLE $app SET idle_in_transaction_session_timeout = '60s';
 ALTER ROLE $owner SET lock_timeout = '10s';
 GRANT pg_read_all_data TO $backup;
+GRANT pg_read_all_stats TO $owner;
 $($perDatabase -join "`n")
 "@
 
