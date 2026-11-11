@@ -165,6 +165,47 @@ return [
     ],
 
     /*
+    | Uploaded files (ADR-0020). Types are an allow-list of extension =>
+    | accepted content types, checked against the bytes, never the browser's
+    | claim. A module may narrow it per upload.
+    */
+    'files' => [
+        'disk' => env('FILES_DISK', 'files'),
+        'max_kb' => (int) env('FILES_MAX_KB', 10240),
+        'types' => [
+            'pdf' => ['application/pdf'],
+            'png' => ['image/png'],
+            'jpg' => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+            'webp' => ['image/webp'],
+            'csv' => ['text/csv', 'text/plain'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+        ],
+        // Decoded image size limit (decompression bombs).
+        'max_image_pixels' => 40_000_000,
+        // structural, or clamav (structural checks first, then the daemon).
+        'scanner' => env('FILES_SCANNER', 'structural'),
+        'clamav' => [
+            'host' => env('CLAMAV_HOST', '127.0.0.1'),
+            'port' => (int) env('CLAMAV_PORT', 3310),
+            'timeout' => (int) env('CLAMAV_TIMEOUT', 30),
+        ],
+        // A file still pending after this many minutes is scanned again.
+        'rescan_after_minutes' => 15,
+    ],
+
+    /*
+    | Outbound HTTP (ADR-0021). Calls go only to listed hosts; each service
+    | has its own timeouts, retry count and circuit breaker.
+    */
+    'http' => [
+        'services' => [
+            // 'example' => ['base_url' => 'https://api.example.com', 'connect_timeout' => 3,
+            //     'timeout' => 10, 'retries' => 2, 'failure_threshold' => 5, 'cooldown' => 60],
+        ],
+    ],
+
+    /*
     | Local load tests (docs/operations/performance-testing.md). The
     | synthetic-data seeder runs only locally and only on this database.
     */

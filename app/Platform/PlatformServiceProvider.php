@@ -6,8 +6,12 @@ use App\Platform\Access\AccessCatalog;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Audit\RecordAuthenticationEvents;
 use App\Platform\Console\RelayOutboxCommand;
+use App\Platform\Console\SweepFilesCommand;
 use App\Platform\Console\VerifyAuditChainCommand;
 use App\Platform\Environment\EnvironmentValidator;
+use App\Platform\Files\ClamAvScanner;
+use App\Platform\Files\Contracts\FileScanner;
+use App\Platform\Files\StructuralScanner;
 use App\Platform\Observability\QueryMetrics;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Connection;
@@ -21,12 +25,30 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 
 class PlatformServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->app->scoped(QueryMetrics::class);
+
+        // The configured scanner; ClamAV always runs the structural checks
+        // first (ADR-0020).
+        $this->app->bind(FileScanner::class, function (): FileScanner {
+            $structural = new StructuralScanner((int) config('platform.files.max_image_pixels'));
+
+            return match (config('platform.files.scanner')) {
+                'structural' => $structural,
+                'clamav' => new ClamAvScanner(
+                    $structural,
+                    (string) config('platform.files.clamav.host'),
+                    (int) config('platform.files.clamav.port'),
+                    (int) config('platform.files.clamav.timeout'),
+                ),
+                default => throw new InvalidArgumentException('Unknown platform.files.scanner ['.config('platform.files.scanner').'].'),
+            };
+        });
     }
 
     public function boot(): void
@@ -39,7 +61,7 @@ class PlatformServiceProvider extends ServiceProvider
         Event::subscribe(RecordAuthenticationEvents::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditChainCommand::class, RelayOutboxCommand::class]);
+            $this->commands([VerifyAuditChainCommand::class, RelayOutboxCommand::class, SweepFilesCommand::class]);
         }
     }
 

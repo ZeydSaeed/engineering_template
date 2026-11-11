@@ -1,0 +1,38 @@
+Phase 5 verification, 2026-11-12, local workstation (Windows 10, PHP 8.5.12,
+PostgreSQL 18.2). ClamAV is not installed locally; its daemon test runs in CI.
+
+== New tests (each file run alone, SQLite in memory)
+ScannersTest        17 tests, 16 passed, 1 skipped (ClamAV daemon; CI only)
+  passes pdf, png, csv, xlsx; rejects PDF JavaScript, hex-escaped
+  /J#61vaScript, /Launch, /EmbeddedFile, an executable named .pdf, text named
+  .png, a PNG claiming 50,000 x 50,000 pixels, binary in CSV, a spreadsheet
+  with vbaProject.bin, an unknown type; ClamAV unreachable -> ScannerUnavailable.
+FileStoreTest       11 tests, 11 passed
+OutboundHttpTest     8 tests,  8 passed
+DeployTemplatesTest  3 tests,  3 passed
+EICAR string in tests/Support/Files.php: md5 44d88612fea8a8f36de82e1278abb02f
+(the published value).
+
+== Whole suite
+composer ci:check (SQLite): 180 tests, 167 passed, 13 skipped
+  (PostgreSQL-only, concurrency, Redis and ClamAV daemon); PHPStan level 8
+  0 errors; deptrac 0 violations; exit 0.
+PostgreSQL (phpunit.pgsql.xml): 180 tests, 178 passed, 2 skipped (Redis and
+  ClamAV daemon, which run in CI).
+
+== Defects found and fixed during the phase
+1. FileStore deleted a file's bytes on any exception, including one raised
+   after the record had committed (queueing the scan). With the queue down
+   that would have left a committed record without its file. The scan is now
+   queued after the transaction, outside the clean-up; a test simulates the
+   queue failing after the commit and checks the record and bytes remain.
+2. Circuit-breaker counting used Cache::increment on a missing key, which
+   some stores do not create; the counter is now created with add() first.
+3. The architecture rules flagged tempnam() in the spreadsheet check
+   (security preset); it now uses tmpfile(), created with a unique name and
+   removed on close.
+
+== Test mistakes corrected (not product defects)
+- A test route lacked the middleware that binds {file} to a record.
+- Http::fake records no request whose handler throws, and fakes add up
+  rather than replace; the circuit test counts calls itself.

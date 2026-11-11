@@ -17,3 +17,6 @@ Schedule::command('queue:monitor', [
 ])->everyMinute()->onOneServer();
 
 Schedule::command('queue:prune-failed', ['--hours' => 720])->daily()->onOneServer();
+
+// Stale pending scans, records without bytes, bytes without records (ADR-0020).
+Schedule::command('platform:files-sweep')->hourly()->withoutOverlapping()->onOneServer();

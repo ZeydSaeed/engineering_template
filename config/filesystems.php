@@ -30,12 +30,39 @@ return [
 
     'disks' => [
 
+        // Not served over HTTP: private files leave only through the files
+        // module, after authorisation and scanning (ADR-0020).
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
+        ],
+
+        // Uploaded files (platform.files.disk). Errors throw: a failed write
+        // must never look like a stored file.
+        'files' => [
+            'driver' => 'local',
+            'root' => env('FILES_ROOT', storage_path('app/private/files')),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
+        // Cloudflare R2 or any S3-compatible store for uploaded files
+        // (FILES_DISK=r2). Needs `composer require league/flysystem-aws-s3-v3`.
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
         ],
 
         'public' => [
