@@ -90,7 +90,9 @@ class PlatformServiceProvider extends ServiceProvider
 
         $slowRequest = (int) config('platform.observability.slow_request_db_ms');
 
-        if ($slowRequest > 0) {
+        // HTTP only: the duration is counted per connection, and a console
+        // command or queue worker keeps one connection for many units of work.
+        if ($slowRequest > 0 && ! $this->app->runningInConsole()) {
             DB::whenQueryingForLongerThan($slowRequest, function (Connection $connection) use ($slowRequest): void {
                 Log::warning('Database time of one request exceeded the limit.', [
                     'limit_ms' => $slowRequest,

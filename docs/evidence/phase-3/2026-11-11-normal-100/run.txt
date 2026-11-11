@@ -1,0 +1,8 @@
+run: normal-100
+started: 2026-11-11T16:28:27  finished: 2026-11-11T16:31:31
+visitor VUs: 60  staff VUs: 40  hold: 2m  base: http://engineering-template.test
+k6 exit code: 99
+machine: Intel(R) Core(TM) i5-7300U CPU @ 2.60GHz, 4 logical CPUs, 15.8 GB RAM
+software: PHP 8.5.12, k6.exe v2.2.0 (commit/00a9a1b7f5, go1.26.5, windows/amd64), PostgreSQL 18.2
+note: application, database, web server and load generator share this machine;
+the postgres process group includes every local database on this server, not only the template

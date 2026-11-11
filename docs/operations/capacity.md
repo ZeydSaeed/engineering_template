@@ -1,0 +1,58 @@
+# Capacity model and memory budget
+
+Status: method implemented; numbers below are either MEASURED (with their
+source) or ESTIMATE. Re-measure on the target host before sizing.
+
+## PHP worker count
+
+```
+fpm_children = floor( (RAM − OS − PostgreSQL − Redis − antivirus − queue workers − 15 % margin)
+                      / RSS_p95 of one PHP worker )
+
+and   fpm_children + queue workers + scheduler + margin  ≤  connection limit of the runtime role
+```
+
+Then check CPU: if the machine's CPU is near 100 % before the workers are
+busy, more workers only add queueing (MEASURED locally: throughput stayed at
+9 to 10 req/s from 50 to 100 VUs while CPU averaged 93 %).
+
+## Inputs
+
+| Input                              | Value                                                        | Source                                           |
+| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| PHP worker working set             | about 30 MB (302 MB / 10 php-cgi)                            | MEASURED, Windows php-cgi, docs/evidence/phase-3 |
+| PostgreSQL backend                 | about 15 MB each (266 MB / 18, all local databases)          | MEASURED, Windows                                |
+| Server time per request (app + db) | p50 about 0.25 to 0.3 s under load, mostly connection set-up | MEASURED, Windows                                |
+| SQL time per request               | under 2 ms for the template's pages                          | MEASURED, pg_stat_statements                     |
+| Audit write ceiling                | about 230 to 260 writes/s (serialised)                       | MEASURED                                         |
+| Audit chain verification           | about 0.17 ms per record (1 M records ≈ 3 min)               | MEASURED                                         |
+| Runtime role connection limit      | 40                                                           | CONFIGURED (ADR-0012)                            |
+| Linux PHP-FPM worker RSS           | typically 40 to 80 MB                                        | ESTIMATE, to measure                             |
+| ClamAV daemon                      | about 1 to 1.5 GB                                            | ESTIMATE, to measure when a module scans files   |
+
+## Example budget: 4 vCPU, 8 GB Linux host (ESTIMATE)
+
+| Service                                                             | Budget                                     |
+| ------------------------------------------------------------------- | ------------------------------------------ |
+| OS, Nginx, monitoring agents                                        | 0.8 GB                                     |
+| PostgreSQL (`shared_buffers` ≈ 1.5 GB, plus work_mem × connections) | 2.5 GB                                     |
+| Redis (`maxmemory`)                                                 | 0.25 GB                                    |
+| Queue workers (4 × 128 to 256 MB)                                   | 0.8 GB                                     |
+| ClamAV (only if used)                                               | 1.2 GB                                     |
+| Margin (15 %)                                                       | 1.2 GB                                     |
+| PHP-FPM                                                             | rest ≈ 1.25 GB → about 16 workers at 75 MB |
+
+## Connection set-up
+
+Every request opened a new PostgreSQL connection, and that set-up was most
+of the measured database time on Windows. On the target host, measure
+`Server-Timing` db time against pg_stat_statements; if set-up dominates,
+add PgBouncer in transaction mode (one pool per application role) and
+re-measure.
+
+## Next measurements (target host, load generator on another machine)
+
+1. PHP-FPM RSS p95 per worker after warm-up and after `pm.max_requests`.
+2. db time vs SQL time, with and without PgBouncer.
+3. Saturation point (throughput plateau) and CPU per request.
+4. Memory with antivirus and queue workers running.

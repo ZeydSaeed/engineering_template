@@ -95,6 +95,12 @@ function post(path, body) {
     return response;
 }
 
+// Warm-up (`k6 run --vus 1 --iterations 1`): every page once, in sequence.
+export default function () {
+    visitor();
+    staff();
+}
+
 export function visitor() {
     get('/', 'public');
     sleep(1 + Math.random() * 2);
