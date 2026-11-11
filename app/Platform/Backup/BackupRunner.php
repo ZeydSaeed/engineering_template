@@ -22,15 +22,22 @@ use Throwable;
  * Each class is encrypted to its own recipient. The dump is also read by
  * `pg_restore --list` on its way to age, so an unreadable dump fails the
  * backup without a plain copy ever touching the disk.
+ *
+ * With BACKUP_ENCRYPT=false the artifacts are plain (database.dump,
+ * files.tar, secrets.tar) and the manifest says so.
  */
 class BackupRunner
 {
     /**
-     * @return array{kind: string, stamp: string, path: string, seconds: float}
+     * @return array{kind: string, stamp: string, path: string, seconds: float, encrypted: bool}
      */
     public function run(string $kind = 'manual'): array
     {
-        BackupSettings::assertSeparateKeys();
+        $encrypted = BackupSettings::encrypted();
+
+        if ($encrypted) {
+            BackupSettings::assertSeparateKeys();
+        }
 
         $started = microtime(true);
         $stamp = now('UTC')->format('Ymd\THis\Z');
@@ -38,10 +45,10 @@ class BackupRunner
         File::ensureDirectoryExists($path, 0700);
 
         try {
-            $snapshot = $this->database($path);
-            $this->tar(Storage::disk((string) config('platform.files.disk'))->path(''), ['.'], 'files', "{$path}/files.tar.age");
-            $this->tar(base_path(), BackupSettings::secretFiles(), 'secrets', "{$path}/secrets.tar.age");
-            $this->manifest($path, $kind, $stamp, $snapshot);
+            $snapshot = $this->database($path, $encrypted);
+            $this->tar(Storage::disk((string) config('platform.files.disk'))->path(''), ['.'], 'files', $path, $encrypted);
+            $this->tar(base_path(), BackupSettings::secretFiles(), 'secrets', $path, $encrypted);
+            $this->manifest($path, $kind, $stamp, $snapshot, $encrypted);
             $this->prune($kind);
             $this->status($kind, $stamp, true, null);
         } catch (Throwable $exception) {
@@ -51,7 +58,7 @@ class BackupRunner
             throw $exception;
         }
 
-        return ['kind' => $kind, 'stamp' => $stamp, 'path' => $path, 'seconds' => round(microtime(true) - $started, 1)];
+        return ['kind' => $kind, 'stamp' => $stamp, 'path' => $path, 'seconds' => round(microtime(true) - $started, 1), 'encrypted' => $encrypted];
     }
 
     /**
@@ -62,7 +69,7 @@ class BackupRunner
      *
      * @return array{table_data: int, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int}
      */
-    private function database(string $path): array
+    private function database(string $path, bool $encrypted): array
     {
         $connection = (array) config('database.connections.'.config('database.default'));
         $environment = ['PGPASSWORD' => (string) config('platform.backup.database.password')];
@@ -89,10 +96,8 @@ class BackupRunner
                 '--username='.config('platform.backup.database.username'), '--dbname='.$connection['database'],
             ], null, $environment);
 
-            $encrypt = new Process([BackupSettings::tool('age'), '--encrypt', '-r', BackupSettings::recipient('database'), '-o', "{$path}/database.dump.age"]);
             $list = new Process([BackupSettings::tool('pg_restore'), '--list']);
-
-            Pipe::run($dump, [$encrypt, $list]);
+            $this->write($dump, 'database', $path, $encrypted, [$list]);
         } finally {
             DB::rollBack();
         }
@@ -108,25 +113,45 @@ class BackupRunner
     /**
      * @param  list<string>  $entries  relative to $root
      */
-    private function tar(string $root, array $entries, string $class, string $target): void
+    private function tar(string $root, array $entries, string $class, string $path, bool $encrypted): void
     {
         $archive = new Process([BackupSettings::tool('tar'), '-cf', '-', '-C', $root, ...$entries]);
-        $encrypt = new Process([BackupSettings::tool('age'), '--encrypt', '-r', BackupSettings::recipient($class), '-o', $target]);
 
-        Pipe::run($archive, [$encrypt]);
+        $this->write($archive, $class, $path, $encrypted);
+    }
+
+    /**
+     * Streams a producer into its class's artifact: through age to its own
+     * recipient, or straight to the file when unencrypted.
+     *
+     * @param  list<Process>  $verifiers  also read the plain stream
+     */
+    private function write(Process $producer, string $class, string $path, bool $encrypted, array $verifiers = []): void
+    {
+        $target = $path.'/'.BackupSettings::artifact($class, $encrypted);
+
+        if (! $encrypted) {
+            Pipe::run($producer, $verifiers, $target);
+
+            return;
+        }
+
+        $encrypt = new Process([BackupSettings::tool('age'), '--encrypt', '-r', BackupSettings::recipient($class), '-o', $target]);
+        Pipe::run($producer, [$encrypt, ...$verifiers]);
     }
 
     /**
      * @param  array{table_data: int, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int}  $snapshot
      */
-    private function manifest(string $path, string $kind, string $stamp, array $snapshot): void
+    private function manifest(string $path, string $kind, string $stamp, array $snapshot, bool $encrypted): void
     {
         $disk = Storage::disk((string) config('platform.files.disk'));
         $files = $disk->allFiles();
 
         $artifacts = [];
 
-        foreach (['database.dump.age', 'files.tar.age', 'secrets.tar.age'] as $artifact) {
+        foreach (BackupSettings::CLASSES as $class) {
+            $artifact = BackupSettings::artifact($class, $encrypted);
             $artifacts[$artifact] = ['sha256' => (string) hash_file('sha256', "{$path}/{$artifact}"), 'bytes' => (int) filesize("{$path}/{$artifact}")];
         }
 
@@ -141,7 +166,8 @@ class BackupRunner
             'audit_head' => $snapshot['audit_head'],
             'stored_files' => $snapshot['stored_files'],
             'files_on_disk' => count($files),
-            'recipients' => array_combine(BackupSettings::CLASSES, array_map(BackupSettings::recipient(...), BackupSettings::CLASSES)),
+            'encrypted' => $encrypted,
+            'recipients' => $encrypted ? array_combine(BackupSettings::CLASSES, array_map(BackupSettings::recipient(...), BackupSettings::CLASSES)) : null,
             'artifacts' => $artifacts,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }

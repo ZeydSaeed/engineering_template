@@ -21,6 +21,10 @@ use Throwable;
  *  5. every stored file restored from the archive has its recorded SHA-256
  *  6. the secrets decrypt with their own key
  *
+ * Unencrypted sets (manifest "encrypted": false) are read directly; for
+ * them the checksums show damage, not tampering, since whoever can change
+ * an artifact can change the manifest too.
+ *
  * Returns the timings: restore time is the recovery time (RTO) measured.
  */
 class RestoreDrill
@@ -34,6 +38,7 @@ class RestoreDrill
     {
         $started = microtime(true);
         $manifest = $this->manifest($set);
+        $encrypted = $manifest['encrypted'];
         $checks = [];
 
         foreach ($manifest['artifacts'] as $name => $artifact) {
@@ -45,7 +50,7 @@ class RestoreDrill
 
         $this->connect();
         $restoreStarted = microtime(true);
-        $this->restoreDatabase($set);
+        $this->restoreDatabase($set, $encrypted);
         $restoreSeconds = round(microtime(true) - $restoreStarted, 1);
         $checks[] = "database restored ({$restoreSeconds} s)";
 
@@ -63,10 +68,10 @@ class RestoreDrill
         $this->verifyAuditChain($manifest);
         $checks[] = 'audit chain intact up to the manifest head';
 
-        $checks[] = $this->verifyFiles($set, $manifest);
+        $checks[] = $this->verifyFiles($set, $manifest, $encrypted);
 
-        $this->verifySecrets($set);
-        $checks[] = 'secrets decrypt with their own key';
+        $this->verifySecrets($set, $encrypted);
+        $checks[] = $encrypted ? 'secrets decrypt with their own key' : 'secrets archive readable (UNENCRYPTED set)';
 
         return [
             'set' => $set,
@@ -79,7 +84,7 @@ class RestoreDrill
     }
 
     /**
-     * @return array{stamp: string, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int, artifacts: array<string, array{sha256: string, bytes: int}>}
+     * @return array{stamp: string, encrypted: bool, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int, artifacts: array<string, array{sha256: string, bytes: int}>}
      */
     private function manifest(string $set): array
     {
@@ -89,8 +94,36 @@ class RestoreDrill
             throw new RuntimeException("No readable manifest in {$set}.");
         }
 
-        /** @var array{stamp: string, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int, artifacts: array<string, array{sha256: string, bytes: int}>} $manifest */
+        // Sets written before the setting existed are encrypted.
+        $manifest['encrypted'] = ($manifest['encrypted'] ?? true) !== false;
+
+        foreach (BackupSettings::CLASSES as $class) {
+            if (! isset($manifest['artifacts'][BackupSettings::artifact($class, $manifest['encrypted'])])) {
+                throw new RuntimeException("The manifest lists no {$class} artifact.");
+            }
+        }
+
+        /** @var array{stamp: string, encrypted: bool, tables: array<string, int>, audit_head: array{id: int, hash: string}|null, stored_files: int, artifacts: array<string, array{sha256: string, bytes: int}>} $manifest */
         return $manifest;
+    }
+
+    /**
+     * Feeds one class's artifact, decrypted when the set is encrypted, to
+     * the consumers.
+     *
+     * @param  list<Process>  $consumers
+     */
+    private function read(string $set, string $class, bool $encrypted, array $consumers): void
+    {
+        $file = $set.'/'.BackupSettings::artifact($class, $encrypted);
+
+        if (! $encrypted) {
+            Pipe::fromFile($file, $consumers);
+
+            return;
+        }
+
+        Pipe::run(new Process([BackupSettings::tool('age'), '--decrypt', '-i', BackupSettings::identity($class), $file]), $consumers);
     }
 
     /**
@@ -120,21 +153,20 @@ class RestoreDrill
         DB::purge(self::CONNECTION);
     }
 
-    private function restoreDatabase(string $set): void
+    private function restoreDatabase(string $set, bool $encrypted): void
     {
         $connection = (array) config('database.connections.'.self::CONNECTION);
 
         // A clean target each time.
         DB::connection(self::CONNECTION)->unprepared('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');
 
-        $decrypt = new Process([BackupSettings::tool('age'), '--decrypt', '-i', BackupSettings::identity('database'), "{$set}/database.dump.age"]);
         $restore = new Process([
             BackupSettings::tool('pg_restore'), '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction',
             '--host='.$connection['host'], '--port='.$connection['port'],
             '--username='.$connection['username'], '--dbname='.$connection['database'],
         ], null, ['PGPASSWORD' => (string) $connection['password']]);
 
-        Pipe::run($decrypt, [$restore]);
+        $this->read($set, 'database', $encrypted, [$restore]);
         DB::purge(self::CONNECTION);
     }
 
@@ -167,15 +199,13 @@ class RestoreDrill
     /**
      * @param  array{stored_files: int}  $manifest
      */
-    private function verifyFiles(string $set, array $manifest): string
+    private function verifyFiles(string $set, array $manifest, bool $encrypted): string
     {
         $target = storage_path('framework/restore-drill-'.bin2hex(random_bytes(6)));
         File::ensureDirectoryExists($target, 0700);
 
         try {
-            $decrypt = new Process([BackupSettings::tool('age'), '--decrypt', '-i', BackupSettings::identity('files'), "{$set}/files.tar.age"]);
-            $extract = new Process([BackupSettings::tool('tar'), '-xf', '-', '-C', $target]);
-            Pipe::run($decrypt, [$extract]);
+            $this->read($set, 'files', $encrypted, [new Process([BackupSettings::tool('tar'), '-xf', '-', '-C', $target])]);
 
             $rows = DB::connection(self::CONNECTION)->table('stored_files')
                 ->whereIn('status', ['pending', 'verified'])
@@ -199,15 +229,14 @@ class RestoreDrill
         }
     }
 
-    private function verifySecrets(string $set): void
+    private function verifySecrets(string $set, bool $encrypted): void
     {
-        $decrypt = new Process([BackupSettings::tool('age'), '--decrypt', '-i', BackupSettings::identity('secrets'), "{$set}/secrets.tar.age"]);
         $list = new Process([BackupSettings::tool('tar'), '-tf', '-']);
 
         try {
-            Pipe::run($decrypt, [$list]);
+            $this->read($set, 'secrets', $encrypted, [$list]);
         } catch (Throwable $exception) {
-            throw new RuntimeException('Secrets could not be decrypted: '.$exception->getMessage(), previous: $exception);
+            throw new RuntimeException('Secrets could not be read: '.$exception->getMessage(), previous: $exception);
         }
 
         foreach ((array) config('platform.backup.secret_files') as $file) {

@@ -62,6 +62,27 @@ exposes one class. Tampering is detected.
 Streaming keeps memory flat; a dump holds one REPEATABLE READ transaction
 open for its duration (watch for very long dumps blocking vacuum).
 
+## Amendment 2026-11-12: unencrypted backups (owner's decision)
+
+The owner chose to be able to back up without encryption, so that losing
+the private keys can never make the backups unreadable.
+`BACKUP_ENCRYPT=false` (any environment) writes `database.dump`,
+`files.tar` and `secrets.tar` in plain form; the manifest records
+`"encrypted": false`, the command prints a warning on every run, and the
+restore drill reads both kinds. The template default stays encrypted.
+
+Accepted risk, signed off by the owner: with plain sets, anyone who can
+read the backup directory or any copy of it (the server, object storage, a
+USB drive) reads the whole database, every uploaded file and the `.env`
+secrets (database passwords, APP_KEY, AUDIT_HMAC_KEY). The manifest
+checksums then show accidental damage only, not tampering. Off-host copies
+of plain sets must sit in storage with its own access control and
+encryption at rest.
+
+The alternative offered and not chosen: keep encryption and protect the key
+files with a passphrase (`age -p`), so a lost key file is recoverable from
+the passphrase.
+
 ## Reversal or migration strategy
 
 Point-in-time recovery (WAL archiving with pgBackRest) is added on the

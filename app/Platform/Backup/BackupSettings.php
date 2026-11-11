@@ -11,6 +11,21 @@ final class BackupSettings
 {
     public const CLASSES = ['database', 'files', 'secrets'];
 
+    /**
+     * Artifact file names per class, by whether the set is encrypted.
+     */
+    public const ARTIFACTS = ['database' => 'database.dump', 'files' => 'files.tar', 'secrets' => 'secrets.tar'];
+
+    public static function encrypted(): bool
+    {
+        return (bool) config('platform.backup.encrypt', true);
+    }
+
+    public static function artifact(string $class, bool $encrypted): string
+    {
+        return self::ARTIFACTS[$class].($encrypted ? '.age' : '');
+    }
+
     public static function directory(): string
     {
         return rtrim((string) config('platform.backup.directory'), '/\\');

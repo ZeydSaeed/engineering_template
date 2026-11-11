@@ -25,6 +25,14 @@ age-keygen -o database.agekey && age-keygen -y database.agekey > database.recipi
 (the same for files and secrets)
 ```
 
+### Unencrypted sets
+
+With `BACKUP_ENCRYPT=false` (ADR-0022, amendment) no keys are needed: sets
+hold `database.dump`, `files.tar` and `secrets.tar`, readable by anyone who
+can read them. Restore them as below without the `age -d` step
+(`pg_restore ... database.dump`, `tar -xf files.tar`, `tar -xf secrets.tar`).
+Keep every copy in access-controlled storage with encryption at rest.
+
 ## Backups
 
 `php artisan platform:backup daily` runs nightly from the scheduler;

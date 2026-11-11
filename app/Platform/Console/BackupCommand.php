@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Throwable;
 
 #[Signature('platform:backup {kind=manual : daily or manual}')]
-#[Description('Write an encrypted backup set: database, files and secrets, each with its own key')]
+#[Description('Write a backup set: database, files and secrets, each encrypted with its own key unless BACKUP_ENCRYPT=false')]
 class BackupCommand extends Command
 {
     public function handle(BackupRunner $runner): int
@@ -31,6 +31,10 @@ class BackupCommand extends Command
         }
 
         $this->info("Backup {$result['kind']}/{$result['stamp']} written in {$result['seconds']} s: {$result['path']}");
+
+        if (! $result['encrypted']) {
+            $this->warn('UNENCRYPTED (BACKUP_ENCRYPT=false): anyone who can read this set reads the database, files and secrets.');
+        }
 
         return self::SUCCESS;
     }

@@ -213,8 +213,13 @@ return [
     | to its own age recipient, so one leaked key exposes one class. Only
     | public recipients live on the server; the private identities are needed
     | for restores only and are kept offline.
+    |
+    | BACKUP_ENCRYPT=false writes plain artifacts instead: anyone who can read
+    | the backup directory or its copies reads every class (an accepted risk,
+    | ADR-0022). No keys are needed then.
     */
     'backup' => [
+        'encrypt' => (bool) env('BACKUP_ENCRYPT', true),
         'directory' => env('BACKUP_DIR', storage_path('app/private/backups')),
         'keep' => ['daily' => 7, 'weekly' => 4, 'manual' => 10],
         'recipients' => [

@@ -62,6 +62,22 @@ Test suites (after all changes)
   metrics), MetricsAndReadinessTest, BackupSafeguardsTest, DeployTemplatesTest
   (probes and /metrics local-only in Nginx).
 
+Amendment 2026-11-12 - unencrypted backups (owner's decision, ADR-0022)
+- BACKUP_ENCRYPT=false set in the local .env.
+- platform:backup manual -> manual/20261111T220216Z in 2.1 s, warning printed;
+  artifacts database.dump (3.69 MB), files.tar, secrets.tar; manifest
+  "encrypted": false, no recipients.
+- Read without any key: pg_restore --list database.dump -> 15 TABLE DATA
+  entries; tar -tf files.tar -> 8 entries; tar -tf secrets.tar -> .env.
+- Restore database recreated with the owner's approval, then dropped again.
+  Drill on the unencrypted set: PASSED (restore 2.4 s, total 10.9 s; rows,
+  audit chain, 5 file hashes, secrets archive).
+  Drill on the earlier encrypted set manual/20261111T214848Z (regression of
+  the changed read path): PASSED (restore 3.3 s, total 19.6 s).
+  Remaining databases: engineering_template, engineering_template_testing.
+- CI re-run after the failed dependency download (commit b29f5f8, run
+  43107653451): ci and postgres jobs passed.
+
 NOT TESTED
 - Prometheus/Alertmanager and the exporters running (no stack installed
   locally); promtool check of alerts.yml.

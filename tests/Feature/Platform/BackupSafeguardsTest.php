@@ -1,8 +1,10 @@
 <?php
 
 use App\Platform\Backup\BackupSettings;
+use App\Platform\Backup\Pipe;
 use App\Platform\Backup\RestoreDrill;
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 
 /*
 | Backup and restore safeguards that need no external tool. The full
@@ -40,13 +42,61 @@ it('backs up only secret files inside the application root', function (mixed $en
 })->throws(InvalidArgumentException::class, 'inside the application root')
     ->with(['/etc/shadow', 'C:\\Windows\\win.ini', '../other-app/.env', 'config/../../x', '', 42]);
 
+it('names artifacts by whether the set is encrypted', function () {
+    expect(BackupSettings::artifact('database', true))->toBe('database.dump.age')
+        ->and(BackupSettings::artifact('files', false))->toBe('files.tar')
+        ->and(BackupSettings::encrypted())->toBeTrue();
+
+    config(['platform.backup.encrypt' => false]);
+
+    expect(BackupSettings::encrypted())->toBeFalse();
+});
+
+it('streams to a file and reads it back unchanged', function () {
+    $file = storage_path('framework/testing-pipe-'.bin2hex(random_bytes(4)));
+    $payload = str_repeat("line of backup data\n", 20000);
+    $source = new Process([PHP_BINARY, '-r', 'echo str_repeat("line of backup data\n", 20000);']);
+    $count = new Process([PHP_BINARY, '-r', 'echo strlen(stream_get_contents(STDIN));']);
+
+    try {
+        Pipe::run($source, [$count], $file);
+        $again = new Process([PHP_BINARY, '-r', 'echo hash("sha256", stream_get_contents(STDIN));']);
+        Pipe::fromFile($file, [$again]);
+
+        expect($count->getOutput())->toBe((string) strlen($payload))
+            ->and(hash_file('sha256', $file))->toBe(hash('sha256', $payload))
+            ->and($again->getOutput())->toBe(hash('sha256', $payload));
+    } finally {
+        File::delete($file);
+    }
+});
+
+it('rejects a manifest that lacks an artifact for its encryption mode', function () {
+    $set = storage_path('framework/testing-backup-set-3');
+    File::ensureDirectoryExists($set);
+    File::put("{$set}/manifest.json", (string) json_encode([
+        'stamp' => '20261112T000000Z', 'encrypted' => false, 'tables' => [], 'audit_head' => null, 'stored_files' => 0,
+        'artifacts' => ['database.dump.age' => ['sha256' => 'x', 'bytes' => 1]],
+    ]));
+
+    try {
+        app(RestoreDrill::class)->run($set);
+    } finally {
+        File::deleteDirectory($set);
+    }
+})->throws(RuntimeException::class, 'lists no database artifact');
+
 it('detects an altered set before decrypting anything', function () {
     $set = storage_path('framework/testing-backup-set');
     File::ensureDirectoryExists($set);
     File::put("{$set}/database.dump.age", 'encrypted bytes');
     File::put("{$set}/manifest.json", (string) json_encode([
         'stamp' => '20261112T000000Z', 'tables' => [], 'audit_head' => null, 'stored_files' => 0,
-        'artifacts' => ['database.dump.age' => ['sha256' => hash('sha256', 'original bytes'), 'bytes' => 14]],
+        'artifacts' => [
+            'database.dump.age' => ['sha256' => hash('sha256', 'original bytes'), 'bytes' => 14],
+            'files.tar.age' => ['sha256' => 'x', 'bytes' => 1],
+            'secrets.tar.age' => ['sha256' => 'x', 'bytes' => 1],
+        ],
     ]));
 
     try {
@@ -59,7 +109,12 @@ it('detects an altered set before decrypting anything', function () {
 it('never restores into the application database or a name without "restore"', function (string $target) {
     $set = storage_path('framework/testing-backup-set-2');
     File::ensureDirectoryExists($set);
-    File::put("{$set}/manifest.json", (string) json_encode(['stamp' => '20261112T000000Z', 'tables' => [], 'audit_head' => null, 'stored_files' => 0, 'artifacts' => []]));
+    $artifacts = ['database.dump' => [], 'files.tar' => [], 'secrets.tar' => []];
+    foreach ($artifacts as $name => $value) {
+        File::put("{$set}/{$name}", 'plain bytes');
+        $artifacts[$name] = ['sha256' => hash('sha256', 'plain bytes'), 'bytes' => 11];
+    }
+    File::put("{$set}/manifest.json", (string) json_encode(['stamp' => '20261112T000000Z', 'encrypted' => false, 'tables' => [], 'audit_head' => null, 'stored_files' => 0, 'artifacts' => $artifacts]));
     config(['database.connections.'.config('database.default').'.database' => 'engineering_template_restore_live']);
     config(['platform.backup.restore.database' => $target === 'app' ? 'engineering_template_restore_live' : $target]);
 
