@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { DirectionProvider } from '@radix-ui/react-direction';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -24,15 +25,26 @@ void createInertiaApp({
     },
     strictMode: true,
     withApp(app) {
+        // The server sets <html dir>; a language change reloads the page.
+        const direction =
+            document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr';
+
         return (
-            <TooltipProvider delayDuration={0}>
-                {app}
-                <Toaster />
-            </TooltipProvider>
+            <DirectionProvider dir={direction}>
+                <TooltipProvider delayDuration={0}>
+                    {app}
+                    <Toaster
+                        dir={direction}
+                        position={
+                            direction === 'rtl' ? 'bottom-left' : 'bottom-right'
+                        }
+                    />
+                </TooltipProvider>
+            </DirectionProvider>
         );
     },
     progress: {
-        color: '#4B5563',
+        color: 'var(--primary)',
     },
 });
 

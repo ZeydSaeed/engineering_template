@@ -12,6 +12,10 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            locale: string;
+            locales: string[];
+            direction: 'ltr' | 'rtl';
+            translations: Record<string, string>;
             [key: string]: unknown;
         };
     }

@@ -14,6 +14,8 @@
 /resources/js/routes
 /resources/js/wayfinder
 /vendor
+# Browser tests (playwright.config.ts).
+/database/browser.sqlite
 .DS_Store
 .env
 .env.backup

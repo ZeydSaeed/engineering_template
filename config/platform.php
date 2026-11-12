@@ -16,6 +16,16 @@ use App\Access\Role;
 return [
 
     /*
+    | Interface languages and their writing direction (ADR-0024). The first
+    | request uses app.locale; a person's choice is kept in the "locale"
+    | cookie. Strings live in lang/<locale>.json, keyed by the English text.
+    */
+    'locales' => [
+        'ar' => 'rtl',
+        'en' => 'ltr',
+    ],
+
+    /*
     | Request correlation (ADR-0009). An inbound header is reused only when it
     | matches the pattern; otherwise a UUIDv7 is generated.
     */

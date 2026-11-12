@@ -1,3 +1,4 @@
+import { useTranslations } from '@/hooks/use-translations';
 import type { ComponentPropsWithoutRef } from 'react';
 import {
     SidebarGroup,
@@ -16,6 +17,8 @@ export function NavFooter({
 }: ComponentPropsWithoutRef<typeof SidebarGroup> & {
     items: NavItem[];
 }) {
+    const { t } = useTranslations();
+
     return (
         <SidebarGroup
             {...props}
@@ -27,7 +30,7 @@ export function NavFooter({
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton
                                 asChild
-                                className="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
+                                className="text-muted-foreground hover:text-foreground"
                             >
                                 <a
                                     href={toUrl(item.href)}
@@ -37,7 +40,7 @@ export function NavFooter({
                                     {item.icon && (
                                         <item.icon className="h-5 w-5" />
                                     )}
-                                    <span>{item.title}</span>
+                                    <span>{t(item.title)}</span>
                                 </a>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

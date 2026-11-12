@@ -8,6 +8,7 @@ use App\Platform\Http\Middleware\AssignRequestId;
 use App\Platform\Http\Middleware\RequireSecondFactor;
 use App\Platform\Http\Middleware\SecurityHeaders;
 use App\Platform\Http\Middleware\ServerTiming;
+use App\Platform\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -30,9 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Outermost, so error responses carry the id and the headers too.
         $middleware->prepend([AssignRequestId::class, ServerTiming::class, SecurityHeaders::class]);
 
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        $middleware->encryptCookies(except: ['appearance', 'locale', 'sidebar_state']);
 
         $middleware->web(append: [
+            SetLocale::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

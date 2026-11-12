@@ -8,3 +8,6 @@ routes.php
 routes.scanned.php
 schedule-*
 services.json
+playwright
+playwright-auth.json
+screenshots

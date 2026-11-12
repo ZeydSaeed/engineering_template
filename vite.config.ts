@@ -4,7 +4,7 @@ import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
+import { fontsource } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 export default defineConfig({
@@ -12,9 +12,16 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             refresh: true,
+            // Self-hosted from node_modules (SIL OFL 1.1): Arabic and Latin
+            // in one family, no third-party font server (ADR-0024).
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
+                fontsource('IBM Plex Sans Arabic', {
+                    variable: '--font-interface',
+                    weights: [400, 500, 600, 700],
+                    subsets: ['arabic', 'latin'],
+                    preload: [{ weight: 400 }],
+                    // Metric-matched fallbacks need the optional fontaine package.
+                    optimizedFallbacks: false,
                 }),
             ],
         }),

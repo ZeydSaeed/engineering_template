@@ -1,0 +1,51 @@
+Phase 7.1 verification - design system foundation (ADR-0024)
+Machine: local development PC (Windows 10, PHP 8.5.12, Node 24, Chromium
+headless shell 158 via Playwright 1.65, axe-core 4.14)
+Date: 2026-11-12
+
+Implemented
+- Arabic/RTL and English/LTR: SetLocale (cookie, validated), <html lang dir>,
+  DirectionProvider, logical CSS properties throughout, sidebar on the
+  reading side, mirrored arrows, language switcher (welcome, sign-in pages,
+  appearance settings).
+- 135 interface strings in lang/ar.json; lang/ar/{auth,passwords,
+  pagination,validation}.php.
+- Tokens: semantic colours light/dark incl. success/warning/info; raw
+  palette colours removed from application components; reduced motion.
+- Font IBM Plex Sans Arabic (OFL 1.1) self-hosted; bunny.net removed.
+- Neutral logo and favicons replace the Laravel marks.
+- Dashboard: welcome and a reusable EmptyState (improvement #13).
+
+Defects found and fixed
+- The theme script in the root view had no CSP nonce: blocked in every
+  browser since the CSP went live (ADR-0016). Now carries the nonce; tested.
+- The appearance cookie (unencrypted) reached an inline script unchecked;
+  now limited to light/dark/system and passed through @json; tested.
+- axe found WCAG AA contrast failures (appearance tabs, delete-account
+  warning, error and status text) from raw palette colours; replaced with
+  tokens.
+- Starter-kit links to Laravel's repository and docs removed from the
+  sidebar and header.
+
+Measurements
+- Contrast (lowest per theme): light field borders 3.54:1, muted text 6.35:1;
+  dark field borders 3.47:1, muted text 8.30:1. Negative control
+  oklch(0.7 0 0) on white = 2.67:1 is rejected.
+- Bundle (gzipped, first visit): JS 176.9-201.0 kB (budget 210), CSS
+  13.5 kB (budget 20). Heaviest page: settings/security.
+
+Tests
+- Browser: 56/56 passed (7 pages x ar/en x light/dark x phone/desktop):
+  html dir, axe WCAG 2.2 A/AA zero violations, no horizontal overflow,
+  sidebar side. Screenshots in screenshots/ (dashboard, login, security;
+  ar/en; phone/desktop).
+- composer ci:check (SQLite): Pint, PHPStan 8, deptrac 0 violations, Pest
+  219 tests: 206 passed, 13 skipped, 0 failed.
+- composer test:pgsql: 219 tests: 217 passed, 2 skipped (Redis, ClamAV:
+  CI), 0 failed.
+- npm run budget: within budget.
+
+NOT TESTED / not covered by axe
+- Screen-reader walkthrough (NVDA/VoiceOver) and keyboard-only walkthrough.
+- Safari and Firefox (Chromium only).
+- Visual regression baselines (screenshots are evidence, not compared).

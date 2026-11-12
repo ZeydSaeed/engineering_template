@@ -11,5 +11,7 @@ if (-not (Test-Path (Join-Path $php 'php.exe'))) { throw "PHP 8.5 not found in $
 if (-not $node) { throw 'Node not found in .tools\node (see docs/development.md)' }
 
 $env:PATH = "$php;$node;" + $env:PATH
+# Browsers for the Playwright tests stay in the workspace too.
+$env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Split-Path $PSScriptRoot) '.tools\ms-playwright'
 "PHP  " + (php -r 'echo PHP_VERSION;')
 "Node " + (node --version)

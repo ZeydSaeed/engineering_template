@@ -10,13 +10,16 @@ use Symfony\Component\HttpFoundation\Response;
 class HandleAppearance
 {
     /**
-     * Handle an incoming request.
+     * Shares the chosen theme with the root view. The cookie is not
+     * encrypted, so only the known values are passed on.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        View::share('appearance', $request->cookie('appearance') ?? 'system');
+        $appearance = $request->cookie('appearance');
+
+        View::share('appearance', in_array($appearance, ['light', 'dark', 'system'], true) ? $appearance : 'system');
 
         return $next($request);
     }

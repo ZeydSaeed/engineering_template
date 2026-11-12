@@ -2,7 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Platform\Http\Middleware\SetLocale;
+use App\Platform\Localization\Translations;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -42,6 +46,11 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'locale' => App::getLocale(),
+            'locales' => array_keys((array) config('platform.locales')),
+            'direction' => SetLocale::direction(),
+            // Sent once per full page load; a language change reloads the page.
+            'translations' => Inertia::once(fn (): array => Translations::for(App::getLocale())),
         ];
     }
 }
