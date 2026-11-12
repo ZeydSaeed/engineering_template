@@ -25,6 +25,8 @@ const serverEnv = {
     MAIL_MAILER: 'array',
     LOG_CHANNEL: 'null',
     PLATFORM_HSTS: 'false',
+    // Signing in writes an audit record, which needs a key (as in phpunit.xml).
+    AUDIT_HMAC_KEY: 'browser-tests-only-audit-key-not-a-secret-0123',
 };
 
 Object.assign(process.env, serverEnv);
