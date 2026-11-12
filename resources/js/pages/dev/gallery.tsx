@@ -1,7 +1,13 @@
 import { Head } from '@inertiajs/react';
 import { Inbox, RotateCcw } from 'lucide-react';
 import type { ReactNode } from 'react';
+import ActivityTimeline from '@/components/activity-timeline';
 import ConfirmAction from '@/components/confirm-action';
+import {
+    BulkActionBar,
+    BulkResultPanel,
+} from '@/components/data-table/bulk-actions';
+import TablePagination from '@/components/data-table/table-pagination';
 import Drawer from '@/components/drawer';
 import EmptyState from '@/components/empty-state';
 import FormField from '@/components/form-field';
@@ -198,6 +204,78 @@ export default function Gallery() {
                             description={t('This cannot be undone.')}
                             confirmLabel={t('Remove')}
                             form={{ action: '/ui', method: 'get' }}
+                        />
+                    </div>
+                </Section>
+
+                <Section
+                    id="data"
+                    title={t('Data')}
+                    description={t(
+                        'Pieces of the server-side table; the users page shows them working together.',
+                    )}
+                >
+                    <div className="space-y-4">
+                        <BulkActionBar count={3} onClear={() => undefined}>
+                            <Button size="sm" variant="outline">
+                                {t('Grant a role')}
+                            </Button>
+                        </BulkActionBar>
+                        <BulkResultPanel
+                            result={{
+                                succeeded: [1, 2],
+                                failed: [
+                                    {
+                                        id: 3,
+                                        name: 'Browser Test',
+                                        reason: t(
+                                            'You cannot change your own roles.',
+                                        ),
+                                    },
+                                ],
+                            }}
+                            onDismiss={() => undefined}
+                        />
+                        <TablePagination
+                            meta={{
+                                page: 2,
+                                last_page: 5,
+                                total: 120,
+                                from: 26,
+                                to: 50,
+                            }}
+                            perPage={25}
+                            onPage={() => undefined}
+                            onPerPage={() => undefined}
+                        />
+                    </div>
+                </Section>
+
+                <Section
+                    id="timeline"
+                    title={t('Activity')}
+                    description={t("A record's history from the audit trail.")}
+                >
+                    <div className="max-w-md">
+                        <ActivityTimeline
+                            entries={[
+                                {
+                                    id: 2,
+                                    action: 'access.role_assigned',
+                                    occurred_at: '2026-11-12T10:30:00Z',
+                                    actor: 'Browser Test',
+                                    subject_is_record: true,
+                                    details: { role: 'auditor' },
+                                },
+                                {
+                                    id: 1,
+                                    action: 'auth.login',
+                                    occurred_at: '2026-11-12T09:00:00Z',
+                                    actor: 'Person 01',
+                                    subject_is_record: false,
+                                    details: {},
+                                },
+                            ]}
                         />
                     </div>
                 </Section>

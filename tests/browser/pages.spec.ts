@@ -31,6 +31,7 @@ const userPages = [
     '/settings/security',
     '/settings/appearance',
     '/ui',
+    '/admin/users',
 ];
 
 async function open(

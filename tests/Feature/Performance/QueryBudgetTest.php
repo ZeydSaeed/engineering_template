@@ -44,8 +44,11 @@ it('keeps each page within its query budget', function (string $page, bool $sign
 })->with([
     'home, guest' => ['home', false, 0],
     'login form' => ['login', false, 0],
-    'dashboard' => ['dashboard', true, 0],
-    'profile settings' => ['profile.edit', true, 0],
-    // The passkey list.
-    'security settings' => ['security.edit', true, 1],
+    // Signed in: one indexed lookup of the person's roles, shared as
+    // auth.permissions so the interface offers only what they may do
+    // (ADR-0026). Raised from 0 in Phase 7 batch 2.
+    'dashboard' => ['dashboard', true, 1],
+    'profile settings' => ['profile.edit', true, 1],
+    // Roles, and the passkey list.
+    'security settings' => ['security.edit', true, 2],
 ]);

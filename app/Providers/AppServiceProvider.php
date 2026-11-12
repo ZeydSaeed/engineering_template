@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Access\Permission;
+use App\Http\Tables\UsersTable;
+use App\Platform\Tables\TableRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
@@ -26,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Server-side tables, for the shared column and saved-view endpoints.
+        $this->app->make(TableRegistry::class)->register('users', UsersTable::class, Permission::RolesManage->value);
     }
 
     /**

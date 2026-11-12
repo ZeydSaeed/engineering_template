@@ -1,9 +1,8 @@
 import { Form } from '@inertiajs/react';
 import { ShieldCheck } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
-import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
 import { Button } from '@/components/ui/button';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import { disable, enable } from '@/routes/two-factor';
@@ -15,6 +14,9 @@ export type Props = {
     twoFactorEnabled?: boolean;
 };
 
+const TwoFactorSetupModal = lazy(
+    () => import('@/components/two-factor-setup-modal'),
+);
 export default function ManageTwoFactor(props: Props) {
     const { t } = useTranslations();
 
@@ -33,6 +35,15 @@ export default function ManageTwoFactor(props: Props) {
         errors,
     } = useTwoFactorAuth();
     const [showSetupModal, setShowSetupModal] = useState<boolean>(false);
+    // Loaded on first use, then kept mounted so closing (animation, focus
+    // return) works as usual.
+    const [setupModalUsed, setSetupModalUsed] = useState(false);
+
+    useEffect(() => {
+        if (showSetupModal) {
+            setSetupModalUsed(true);
+        }
+    }, [showSetupModal]);
     const prevTwoFactorEnabled = useRef(twoFactorEnabled);
 
     useEffect(() => {
@@ -114,17 +125,21 @@ export default function ManageTwoFactor(props: Props) {
                 </div>
             )}
 
-            <TwoFactorSetupModal
-                isOpen={showSetupModal}
-                onClose={() => setShowSetupModal(false)}
-                requiresConfirmation={requiresConfirmation}
-                twoFactorEnabled={twoFactorEnabled}
-                qrCodeSvg={qrCodeSvg}
-                manualSetupKey={manualSetupKey}
-                clearSetupData={clearSetupData}
-                fetchSetupData={fetchSetupData}
-                errors={errors}
-            />
+            {setupModalUsed && (
+                <Suspense fallback={null}>
+                    <TwoFactorSetupModal
+                        isOpen={showSetupModal}
+                        onClose={() => setShowSetupModal(false)}
+                        requiresConfirmation={requiresConfirmation}
+                        twoFactorEnabled={twoFactorEnabled}
+                        qrCodeSvg={qrCodeSvg}
+                        manualSetupKey={manualSetupKey}
+                        clearSetupData={clearSetupData}
+                        fetchSetupData={fetchSetupData}
+                        errors={errors}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }

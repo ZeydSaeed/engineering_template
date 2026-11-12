@@ -16,6 +16,7 @@ use App\Platform\Files\ClamAvScanner;
 use App\Platform\Files\Contracts\FileScanner;
 use App\Platform\Files\StructuralScanner;
 use App\Platform\Observability\QueryMetrics;
+use App\Platform\Tables\TableRegistry;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
@@ -35,6 +36,7 @@ class PlatformServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(QueryMetrics::class);
+        $this->app->singleton(TableRegistry::class);
 
         // The configured scanner; ClamAV always runs the structural checks
         // first (ADR-0020).

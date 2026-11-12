@@ -120,7 +120,8 @@ it('leaves no English text hard-coded in the interface', function () {
         $source = $file->getContents();
 
         // Text between a tag and the next tag or expression: <p>Text</p>.
-        preg_match_all('/(?<=>)[^<>{}]*[A-Za-z]{2}[^<>{}]*(?=<|\{)/', $source, $text);
+        // Not after "=>", which ends an arrow function's parameters.
+        preg_match_all('/(?<=[^=]>)[^<>{}]*[A-Za-z]{2}[^<>{}]*(?=<|\{)/', $source, $text);
         // Visible attributes with literal English.
         preg_match_all('/\s(?:title|placeholder|aria-label|alt|label)="[^"]*[A-Za-z]{2}[^"]*"/', $source, $attributes);
         // English defaults and alternatives outside t(): {label ?? 'Text'},

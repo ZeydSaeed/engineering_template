@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,19 +13,14 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { useMainNavigation } from '@/hooks/use-main-navigation';
 import type { NavItem } from '@/types';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
 
 const footerNavItems: NavItem[] = [];
 
 export function AppSidebar() {
+    const mainNavItems = useMainNavigation();
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
