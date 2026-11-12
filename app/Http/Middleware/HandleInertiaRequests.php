@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Http\Middleware\SetLocale;
 use App\Platform\Localization\Translations;
@@ -51,6 +52,8 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $this->permissions($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // No choice yet: the interface picks by screen width (#11).
+            'sidebarChosen' => $request->hasCookie('sidebar_state'),
             'locale' => App::getLocale(),
             'locales' => array_keys((array) config('platform.locales')),
             'direction' => SetLocale::direction(),
@@ -59,6 +62,13 @@ class HandleInertiaRequests extends Middleware
             // Workspace choices the interface applies itself (ADR-0028);
             // language and theme are applied by the server.
             'preferences' => $this->preferences($request),
+            // The header's notification count (ADR-0029): one query on the
+            // (notifiable, read_at) index.
+            'notifications' => fn (): array => [
+                'unread' => $request->hasSession() && $request->user() instanceof User
+                    ? $request->user()->unreadNotifications()->count()
+                    : 0,
+            ],
         ];
     }
 

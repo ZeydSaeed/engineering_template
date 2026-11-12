@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Access\Role;
 use App\Models\User;
+use App\Notifications\RoleChanged;
 use App\Platform\Access\RoleAssignment;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
@@ -39,6 +40,10 @@ class BrowserTestSeeder extends Seeder
             'two_factor_confirmed_at' => now(),
         ]);
         RoleAssignment::query()->forceCreate(['user_id' => $browser->id, 'role' => Role::Administrator->value]);
+
+        // Two unread notifications, for the notification tests.
+        $browser->notify(new RoleChanged('role_granted', Role::Administrator->value, 'Setup'));
+        $browser->notify(new RoleChanged('role_granted', Role::Auditor->value, 'Setup'));
 
         // Enough people for two pages of the user list, with mixed roles.
         foreach (range(1, 40) as $i) {

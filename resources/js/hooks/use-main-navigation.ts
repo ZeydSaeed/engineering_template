@@ -1,7 +1,9 @@
 import { usePage } from '@inertiajs/react';
-import { LayoutGrid, Users } from 'lucide-react';
+import { BarChart3, Bell, LayoutGrid, Users } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { reports } from '@/routes/admin';
 import { index as usersIndex } from '@/routes/admin/users';
+import { index as notificationsIndex } from '@/routes/notifications';
 import type { NavItem } from '@/types';
 
 /**
@@ -15,11 +17,18 @@ export function useMainNavigation(): NavItem[] {
 
     const items: (NavItem & { permission?: string })[] = [
         { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+        { title: 'Notifications', href: notificationsIndex(), icon: Bell },
         {
             title: 'Users',
             href: usersIndex(),
             icon: Users,
             permission: 'roles.manage',
+        },
+        {
+            title: 'Reports',
+            href: reports(),
+            icon: BarChart3,
+            permission: 'audit.view',
         },
     ];
 

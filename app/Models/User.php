@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\StoredNotification;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Access\HasRoles;
 use App\Platform\Identity\Contracts\HasSecondFactor;
@@ -10,6 +11,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -54,5 +56,16 @@ class User extends Authenticatable implements HasSecondFactor, HoldsRoles, MustV
     public function hasSecondFactor(): bool
     {
         return $this->two_factor_confirmed_at !== null || $this->passkeys()->exists();
+    }
+
+    /**
+     * Notifications with times kept to the microsecond (ADR-0029); the
+     * database channel writes through this relation.
+     *
+     * @return MorphMany<StoredNotification, $this>
+     */
+    public function notifications(): MorphMany
+    {
+        return $this->morphMany(StoredNotification::class, 'notifiable')->latest();
     }
 }

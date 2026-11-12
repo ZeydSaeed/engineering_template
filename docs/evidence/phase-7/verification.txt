@@ -135,3 +135,25 @@ Phase 7 batch 4a - workspace (2026-11-13)
   preferences once; QueryBudgetTest measures pages within a session.
 - Gates: SQLite 262 passed, 19 skipped; PostgreSQL 279 passed, 2 skipped;
   PHPStan 0; deptrac 0; browser 175/175; budget: base 183.3 kB (185).
+
+## Batch 4b (2026-11-13): #8 notifications, #1 dashboard widgets, #21 reports and charts, #11 tablet layouts
+
+- NotificationsAndDashboardTest (7) on SQLite and PostgreSQL;
+  insights.spec.ts (notifications, widgets, chart, tablet at 820 and
+  1366 px, ar and en, axe); pages.spec.ts adds /notifications and
+  /admin/reports at every size.
+- Defects found and fixed in this batch:
+  * notifications sent in the same second had no stable order: times
+    kept to the microsecond;
+  * the bulk role change read each person's roles one query at a time,
+    which lazy-loading protection turned into a 500 (found by the full
+    gate run): roles loaded with the people;
+  * a preferences test assumed the dashboard reads no preference; it now
+    reads its widget layout, so the test uses the profile page.
+- Bundle: the shortcuts list moved to a chunk loaded on first use; base
+  184.7 -> 181.9 kB.
+- Query budgets: dashboard 7, profile 2, security 3 (unread count added
+  to every signed-in page, on an index).
+- Gates: SQLite 269 passed, 19 skipped; PostgreSQL 286 passed, 2 skipped
+  (Redis, ClamAV); PHPStan 0; deptrac 0; browser 205/205; budget: base
+  181.9 kB (185).

@@ -65,10 +65,12 @@ describe('preferences', function () {
         $user = User::factory()->withTwoFactor()->create();
         UserPreference::write($user->id, WorkspacePreferences::KEY, ['density' => 'compact']);
 
-        $this->actingAs($user)->get('/dashboard')->assertOk();
+        // A page that reads no preference of its own (the dashboard reads
+        // its widget layout, ADR-0029).
+        $this->actingAs($user)->get(route('profile.edit'))->assertOk();
 
         DB::enableQueryLog();
-        $this->actingAs($user)->get('/dashboard')->assertOk();
+        $this->actingAs($user)->get(route('profile.edit'))->assertOk();
         $reads = collect(DB::getQueryLog())->filter(fn (array $query) => str_contains($query['query'], 'user_preferences'));
 
         expect($reads)->toHaveCount(0);

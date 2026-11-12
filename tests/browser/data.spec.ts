@@ -85,7 +85,7 @@ for (const locale of ['ar', 'en']) {
             await expect(emailHeader).toHaveCount(1);
 
             await page.locator('[data-test="column-settings"]').click();
-            await page.locator('#column-email').click();
+            await page.locator('#column-settings-email').click();
             await page.locator('[data-test="save-columns"]').click();
             await expect(emailHeader).toHaveCount(0);
 
@@ -94,7 +94,7 @@ for (const locale of ['ar', 'en']) {
 
             // Restore for the other tests.
             await page.locator('[data-test="column-settings"]').click();
-            await page.locator('#column-email').click();
+            await page.locator('#column-settings-email').click();
             await page.locator('[data-test="save-columns"]').click();
             await expect(emailHeader).toHaveCount(1);
         });

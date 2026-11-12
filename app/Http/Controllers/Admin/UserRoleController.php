@@ -6,6 +6,7 @@ use App\Access\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BulkRoleRequest;
 use App\Models\User;
+use App\Notifications\RoleChanged;
 use App\Platform\Access\AssignRole;
 use App\Platform\Access\RevokeRole;
 use App\Platform\Exceptions\DomainRuleViolation;
@@ -28,7 +29,7 @@ class UserRoleController extends Controller
         $revoking = $request->input('action') === 'revoke';
         /** @var list<int> $ids */
         $ids = array_map(intval(...), (array) $request->input('ids'));
-        $users = User::query()->whereKey($ids)->get()->keyBy('id');
+        $users = User::query()->with('roleAssignments')->whereKey($ids)->get()->keyBy('id');
 
         $succeeded = [];
         $failed = [];
@@ -43,8 +44,15 @@ class UserRoleController extends Controller
             }
 
             try {
+                $had = $user->hasRole($role);
                 $revoking ? $revoke->handle($actor, $user, $role) : $assign->handle($actor, $user, $role);
                 $succeeded[] = $id;
+
+                // Only a real change is news (granting a held role is a
+                // no-op), ADR-0029.
+                if ($had === $revoking) {
+                    $user->notify(new RoleChanged($revoking ? 'role_removed' : 'role_granted', $role->value, $actor->name));
+                }
             } catch (DomainRuleViolation $exception) {
                 $failed[] = ['id' => $id, 'name' => $user->name, 'reason' => $exception->getMessage()];
             } catch (AuthorizationException) {

@@ -23,10 +23,18 @@ export default function ColumnSettings({
     columns,
     prefs,
     onSave,
+    title,
+    description,
+    testId = 'column-settings',
 }: {
     columns: { key: string; header: string; hideable: boolean }[];
     prefs: ColumnPrefs;
     onSave: (prefs: ColumnPrefs) => void;
+    // Defaults to the table's columns; other ordered lists (dashboard
+    // widgets) give their own words.
+    title?: string;
+    description?: string;
+    testId?: string;
 }) {
     const { t } = useTranslations();
     const [open, setOpen] = useState(false);
@@ -58,15 +66,16 @@ export default function ColumnSettings({
             }}
         >
             <DialogTrigger asChild>
-                <Button variant="outline" data-test="column-settings">
+                <Button variant="outline" data-test={testId}>
                     <Columns3 aria-hidden />
-                    {t('Columns')}
+                    {title ?? t('Columns')}
                 </Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogTitle>{t('Columns')}</DialogTitle>
+                <DialogTitle>{title ?? t('Columns')}</DialogTitle>
                 <DialogDescription>
-                    {t('Choose the columns to show and their order.')}
+                    {description ??
+                        t('Choose the columns to show and their order.')}
                 </DialogDescription>
 
                 <ol className="divide-y rounded-lg border">
@@ -77,7 +86,7 @@ export default function ColumnSettings({
                             return null;
                         }
 
-                        const checkboxId = `column-${key}`;
+                        const checkboxId = `${testId}-${key}`;
 
                         return (
                             <li

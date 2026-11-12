@@ -34,6 +34,8 @@ const userPages = [
     '/admin/users',
     '/admin/users/invite',
     '/settings/documents',
+    '/notifications',
+    '/admin/reports',
 ];
 
 async function open(
