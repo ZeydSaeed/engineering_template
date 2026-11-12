@@ -115,7 +115,10 @@ for (const locale of ['ar', 'en']) {
             await page.locator(`[data-view="${name}"]`).click();
             await expect(rows(page)).toHaveCount(8);
 
+            // The menu has fully closed before it opens again.
+            await expect(page.getByRole('menu')).toHaveCount(0);
             await page.locator('[data-test="saved-views"]').click();
+            await expect(page.getByRole('menu')).toBeVisible();
             await page
                 .getByRole('menuitem', {
                     name: locale === 'ar' ? 'إدارة طرق العرض' : 'Manage views',
