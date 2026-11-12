@@ -11,6 +11,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { regenerateRecoveryCodes } from '@/routes/two-factor';
+import { SkeletonText } from '@/components/skeletons';
 import { useTranslations } from '@/hooks/use-translations';
 
 type Props = {
@@ -131,23 +132,10 @@ export default function TwoFactorRecoveryCodes({
                                             </div>
                                         ))
                                     ) : (
-                                        <div
-                                            className="space-y-2"
-                                            aria-label={t(
-                                                'Loading recovery codes',
-                                            )}
-                                        >
-                                            {Array.from(
-                                                { length: 8 },
-                                                (_, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="h-4 animate-pulse rounded bg-muted-foreground/20"
-                                                        aria-hidden="true"
-                                                    />
-                                                ),
-                                            )}
-                                        </div>
+                                        <SkeletonText
+                                            lines={8}
+                                            label={t('Loading recovery codes')}
+                                        />
                                     )}
                                 </div>
 

@@ -1,9 +1,18 @@
 import { Head } from '@inertiajs/react';
 import { Inbox, RotateCcw } from 'lucide-react';
 import type { ReactNode } from 'react';
+import ConfirmAction from '@/components/confirm-action';
+import Drawer from '@/components/drawer';
 import EmptyState from '@/components/empty-state';
+import FormField from '@/components/form-field';
 import Heading from '@/components/heading';
+import {
+    SkeletonCard,
+    SkeletonTable,
+    SkeletonText,
+} from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useTranslations } from '@/hooks/use-translations';
 
 /**
@@ -92,6 +101,103 @@ export default function Gallery() {
                                 </Button>
                             }
                             headingLevel={3}
+                        />
+                    </div>
+                </Section>
+
+                <Section
+                    id="form-field"
+                    title={t('Form fields')}
+                    description={t(
+                        'Label, help text, error and required marker, linked for screen readers.',
+                    )}
+                >
+                    <div className="grid max-w-md gap-6">
+                        <FormField
+                            name="gallery_name"
+                            label={t('Full name')}
+                            description={t(
+                                'As it appears on official documents.',
+                            )}
+                            required
+                        >
+                            {(control) => <Input {...control} />}
+                        </FormField>
+                        <FormField
+                            name="gallery_email"
+                            label={t('Email address')}
+                            error={t('Enter a valid email address.')}
+                            required
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    type="email"
+                                    dir="ltr"
+                                    defaultValue="not-an-email"
+                                />
+                            )}
+                        </FormField>
+                    </div>
+                </Section>
+
+                <Section
+                    id="skeletons"
+                    title={t('Loading placeholders')}
+                    description={t(
+                        'Shaped like the content they stand for; announced once as loading.',
+                    )}
+                >
+                    <div className="grid gap-4 lg:grid-cols-3">
+                        <SkeletonText />
+                        <SkeletonCard />
+                        <SkeletonTable rows={3} columns={3} />
+                    </div>
+                </Section>
+
+                <Section
+                    id="dialogs"
+                    title={t('Dialogs and drawers')}
+                    description={t(
+                        'Focus stays inside while open, Esc closes, focus returns to the button that opened it.',
+                    )}
+                >
+                    <div className="flex flex-wrap gap-3">
+                        <Drawer
+                            title={t('Record details')}
+                            description={t('Opens from the reading end.')}
+                            trigger={
+                                <Button
+                                    variant="outline"
+                                    data-test="open-drawer"
+                                >
+                                    {t('Open drawer')}
+                                </Button>
+                            }
+                            footer={
+                                <Button variant="secondary">
+                                    {t('Close')}
+                                </Button>
+                            }
+                        >
+                            <FormField name="drawer_note" label={t('Note')}>
+                                {(control) => <Input {...control} />}
+                            </FormField>
+                        </Drawer>
+
+                        <ConfirmAction
+                            trigger={
+                                <Button
+                                    variant="destructive"
+                                    data-test="open-confirm"
+                                >
+                                    {t('Remove')}
+                                </Button>
+                            }
+                            title={t('Remove this item?')}
+                            description={t('This cannot be undone.')}
+                            confirmLabel={t('Remove')}
+                            form={{ action: '/ui', method: 'get' }}
                         />
                     </div>
                 </Section>

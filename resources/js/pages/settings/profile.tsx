@@ -3,10 +3,9 @@ import { Link } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 import type { Auth } from '@/types';
 import { send } from '@/routes/verification';
@@ -47,48 +46,43 @@ export default function Profile({
                     }}
                     className="space-y-6"
                 >
-                    {({ processing, errors }) => (
+                    {({ processing, errors, validate, validating }) => (
                         <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">{t('Name')}</Label>
+                            <FormField
+                                name="name"
+                                label={t('Name')}
+                                error={errors.name}
+                                required
+                                onValidate={() => validate('name')}
+                            >
+                                {(control) => (
+                                    <Input
+                                        {...control}
+                                        defaultValue={auth.user.name}
+                                        autoComplete="name"
+                                        placeholder={t('Full name')}
+                                    />
+                                )}
+                            </FormField>
 
-                                <Input
-                                    id="name"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.name}
-                                    name="name"
-                                    required
-                                    autoComplete="name"
-                                    placeholder={t('Full name')}
-                                />
-
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.name}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">
-                                    {t('Email address')}
-                                </Label>
-
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.email}
-                                    name="email"
-                                    required
-                                    autoComplete="username"
-                                    placeholder={t('Email address')}
-                                />
-
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.email}
-                                />
-                            </div>
+                            <FormField
+                                name="email"
+                                label={t('Email address')}
+                                error={errors.email}
+                                required
+                                onValidate={() => validate('email')}
+                            >
+                                {(control) => (
+                                    <Input
+                                        {...control}
+                                        type="email"
+                                        dir="ltr"
+                                        defaultValue={auth.user.email}
+                                        autoComplete="username"
+                                        placeholder={t('Email address')}
+                                    />
+                                )}
+                            </FormField>
 
                             {mustVerifyEmail &&
                                 auth.user.email_verified_at === null && (
@@ -121,7 +115,7 @@ export default function Profile({
 
                             <div className="flex items-center gap-4">
                                 <Button
-                                    disabled={processing}
+                                    disabled={processing || validating}
                                     data-test="update-profile-button"
                                 >
                                     {t('Save')}

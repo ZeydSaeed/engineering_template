@@ -2,10 +2,9 @@ import { Form, Head } from '@inertiajs/react';
 import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
+import FormField from '@/components/form-field';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/security';
 import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
 import ManagePasskeys from '@/components/manage-passkeys';
@@ -62,65 +61,63 @@ export default function Security(props: Props) {
                     }}
                     className="space-y-6"
                 >
-                    {({ errors, processing }) => (
+                    {({ errors, processing, validate, validating }) => (
                         <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="current_password">
-                                    {t('Current password')}
-                                </Label>
+                            {/* Checked on submit only: a live check would
+                                let anyone with the session guess it. */}
+                            <FormField
+                                name="current_password"
+                                label={t('Current password')}
+                                error={errors.current_password}
+                                required
+                            >
+                                {(control) => (
+                                    <PasswordInput
+                                        {...control}
+                                        ref={currentPasswordInput}
+                                        autoComplete="current-password"
+                                    />
+                                )}
+                            </FormField>
 
-                                <PasswordInput
-                                    id="current_password"
-                                    ref={currentPasswordInput}
-                                    name="current_password"
-                                    className="mt-1 block w-full"
-                                    autoComplete="current-password"
-                                    placeholder={t('Current password')}
-                                />
+                            <FormField
+                                name="password"
+                                label={t('New password')}
+                                error={errors.password}
+                                required
+                                onValidate={() => validate('password')}
+                            >
+                                {(control) => (
+                                    <PasswordInput
+                                        {...control}
+                                        ref={passwordInput}
+                                        autoComplete="new-password"
+                                        passwordrules={props.passwordRules}
+                                    />
+                                )}
+                            </FormField>
 
-                                <InputError message={errors.current_password} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="password">
-                                    {t('New password')}
-                                </Label>
-
-                                <PasswordInput
-                                    id="password"
-                                    ref={passwordInput}
-                                    name="password"
-                                    className="mt-1 block w-full"
-                                    autoComplete="new-password"
-                                    placeholder={t('New password')}
-                                    passwordrules={props.passwordRules}
-                                />
-
-                                <InputError message={errors.password} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="password_confirmation">
-                                    {t('Confirm password')}
-                                </Label>
-
-                                <PasswordInput
-                                    id="password_confirmation"
-                                    name="password_confirmation"
-                                    className="mt-1 block w-full"
-                                    autoComplete="new-password"
-                                    placeholder={t('Confirm password')}
-                                    passwordrules={props.passwordRules}
-                                />
-
-                                <InputError
-                                    message={errors.password_confirmation}
-                                />
-                            </div>
+                            <FormField
+                                name="password_confirmation"
+                                label={t('Confirm password')}
+                                error={errors.password_confirmation}
+                                required
+                                onValidate={() =>
+                                    validate('password_confirmation')
+                                }
+                            >
+                                {(control) => (
+                                    <PasswordInput
+                                        {...control}
+                                        autoComplete="new-password"
+                                        passwordrules={props.passwordRules}
+                                    />
+                                )}
+                            </FormField>
 
                             <div className="flex items-center gap-4">
                                 <Button
-                                    disabled={processing}
+                                    disabled={processing || validating}
                                     data-test="update-password-button"
                                 >
                                     {t('Save')}
