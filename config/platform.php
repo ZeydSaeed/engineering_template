@@ -96,8 +96,9 @@ return [
         'hsts_max_age' => (int) env('PLATFORM_HSTS_MAX_AGE', 31536000),
         'csp' => (bool) env('PLATFORM_CSP', true),
         'csp_sources' => [
-            'style-src' => ["'self'", "'unsafe-inline'", 'https://fonts.bunny.net'],
-            'font-src' => ["'self'", 'https://fonts.bunny.net', 'data:'],
+            // Fonts are self-hosted (ADR-0024): no third-party font server.
+            'style-src' => ["'self'", "'unsafe-inline'"],
+            'font-src' => ["'self'", 'data:'],
             'img-src' => ["'self'", 'data:', 'blob:'],
             'connect-src' => ["'self'"],
         ],

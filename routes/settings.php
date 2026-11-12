@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\DocumentController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -30,6 +31,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+
+    // A person's own documents (ADR-0020, ADR-0027).
+    Route::get('settings/documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::post('settings/documents', [DocumentController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('documents.store');
+    Route::get('settings/documents/{uuid}', [DocumentController::class, 'show'])
+        ->whereUuid('uuid')
+        ->name('documents.show');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

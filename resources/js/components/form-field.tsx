@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { ReactNode } from 'react';
+import type { FocusEvent, ReactNode } from 'react';
 import { Label } from '@/components/ui/label';
 import { useTranslations } from '@/hooks/use-translations';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,7 @@ export type FieldControlProps = {
     'aria-required'?: boolean;
     'aria-invalid'?: boolean;
     'aria-describedby'?: string;
-    onBlur?: () => void;
+    onBlur?: (event: FocusEvent<HTMLElement>) => void;
 };
 
 /**
@@ -92,7 +92,24 @@ export default function FormField({
                 'aria-required': required || undefined,
                 'aria-invalid': error ? true : undefined,
                 'aria-describedby': describedBy,
-                onBlur: onValidate,
+                onBlur: onValidate
+                    ? (event) => {
+                          // Focus moving to controls that check the fields
+                          // themselves (a multi-step form's "Next"): no
+                          // second check, and no layout shift under the
+                          // pointer between press and release.
+                          const next = event.relatedTarget;
+
+                          if (
+                              next instanceof HTMLElement &&
+                              next.closest('[data-checks-fields]')
+                          ) {
+                              return;
+                          }
+
+                          onValidate();
+                      }
+                    : undefined,
             })}
 
             <p

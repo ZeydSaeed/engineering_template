@@ -24,6 +24,9 @@ class ResetUserPassword implements ResetsUserPasswords
 
         $user->forceFill([
             'password' => $input['password'],
+            // The reset link arrived by email, so the address is theirs; an
+            // invited person verifies it this way (ADR-0027).
+            'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
     }
 }

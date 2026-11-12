@@ -53,3 +53,11 @@ it('marks pages for signed-in users as not cacheable', function () {
         ->assertOk()
         ->assertHeader('Cache-Control', 'no-store, private');
 });
+
+it('allows no third-party origin in the default policy', function () {
+    // Fonts and assets are self-hosted (ADR-0024); an application that
+    // needs an outside origin adds it on purpose in platform.security.
+    $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
+
+    expect($policy)->not->toMatch('#https?://(?!127\.0\.0\.1|localhost|\[::1\])#');
+});

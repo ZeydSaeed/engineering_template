@@ -1,5 +1,5 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import { ShieldMinus, ShieldPlus } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ShieldMinus, ShieldPlus, UserPlus } from 'lucide-react';
 import { lazy, Suspense, useCallback, useState } from 'react';
 import UserRoleController from '@/actions/App/Http/Controllers/Admin/UserRoleController';
 import SavedViewController from '@/actions/App/Http/Controllers/Tables/SavedViewController';
@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTableNavigation } from '@/hooks/use-table-navigation';
 import { useTranslations } from '@/hooks/use-translations';
-import { index as usersIndex } from '@/routes/admin/users';
+import { invite, index as usersIndex } from '@/routes/admin/users';
 import type {
     BulkResult,
     ColumnPrefs,
@@ -179,10 +179,20 @@ export default function UsersIndex({
         <>
             <Head title={t('Users')} />
             <div className="flex flex-col gap-6 p-4">
-                <Heading
-                    title={t('Users')}
-                    description={t('People who can sign in, and their roles.')}
-                />
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <Heading
+                        title={t('Users')}
+                        description={t(
+                            'People who can sign in, and their roles.',
+                        )}
+                    />
+                    <Button asChild>
+                        <Link href={invite()} data-test="invite-user">
+                            <UserPlus aria-hidden />
+                            {t('Invite a person')}
+                        </Link>
+                    </Button>
+                </div>
 
                 <TableToolbar
                     search={state.search}

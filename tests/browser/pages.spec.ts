@@ -32,6 +32,8 @@ const userPages = [
     '/settings/appearance',
     '/ui',
     '/admin/users',
+    '/admin/users/invite',
+    '/settings/documents',
 ];
 
 async function open(

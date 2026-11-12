@@ -80,3 +80,31 @@ Phase 7 batch 2 - data (2026-11-12/13)
 - Local gates after the fixes: SQLite 241 passed, 18 skipped; PostgreSQL
   257 passed, 2 skipped (Redis, ClamAV in CI); PHPStan 0; deptrac 0;
   budget within limits; browser 129/129.
+
+Phase 7 batch 3 - uploads and multi-step forms (2026-11-13)
+- Improvements: #14 drag and drop, #15 progress/cancel/retry, #6 multi-step
+  forms (ADR-0027). Real flows: Settings > Documents (owner-only, through
+  FileStore) and Admin > Users > Invite a person (3 steps).
+- Server: DocumentsTest 5 tests, InviteUserTest 4 tests (incl. the
+  invitation link setting the password and verifying the address);
+  SecurityHeadersTest: the CSP allows no third-party origin.
+- Browser: forms.spec.ts (choose, drop, early type refusal, server refusal
+  with retry, progress named after the file, cancel and retry; invitation
+  step by step in ar and en): 57/57 over 3 repetitions with behaviour.spec.
+- Defects found and fixed in this batch:
+  * the CSP still allowed https://fonts.bunny.net although the font is
+    self-hosted (ADR-0024 said removed): removed, and tested;
+  * Inertia 3.11 Form validate(config) passes the config as the field name
+    and loses its callbacks: "Next" now sends its own Precognition check;
+  * the validator delays and skips repeated checks: same fix;
+  * "Next" disabled while checking lost the click (the blur check disabled
+    it between press and release): no longer disabled;
+  * a blur check removing an error line moved the layout under the pointer
+    and lost the click: fields do not check on blur towards step buttons;
+  * an upload queue side effect inside a React state updater would upload
+    twice under Strict Mode: queue kept in a ref;
+  * the hidden file input was an unlabelled tab stop (axe): fully hidden,
+    the button is the way in.
+- Gates: SQLite 251 passed, 18 skipped; PostgreSQL 267 passed, 2 skipped;
+  PHPStan 0; deptrac 0; browser 163/163; budget: base 179.3 kB (185),
+  largest page +32.6 kB (35), CSS 13.9 kB (20).
