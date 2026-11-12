@@ -18,6 +18,7 @@ const locales = [
 const themes = ['light', 'dark'] as const;
 const viewports = {
     phone: { width: 390, height: 844 },
+    tablet: { width: 820, height: 1180 },
     desktop: { width: 1366, height: 900 },
 } as const;
 
@@ -29,6 +30,7 @@ const userPages = [
     '/settings/profile',
     '/settings/security',
     '/settings/appearance',
+    '/ui',
 ];
 
 async function open(

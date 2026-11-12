@@ -83,6 +83,22 @@ The alternative offered and not chosen: keep encryption and protect the key
 files with a passphrase (`age -p`), so a lost key file is recoverable from
 the passphrase.
 
+### Narrowed 2026-11-12: local machine only (owner's decision)
+
+The owner then limited unencrypted backups to the local development
+machine. `BACKUP_ENCRYPT=false` is now honoured only when `APP_ENV=local`:
+
+- `BackupSettings::encrypted()` refuses it in any other environment, so no
+  plain set can be written there;
+- `EnvironmentValidator` reports `BACKUP_ENCRYPT must be true.` in
+  production and staging, so such a server refuses to start;
+- both are covered by tests (BackupSafeguardsTest, EnvironmentValidatorTest).
+
+The local `.env` of the owner's development machine is the only place
+with `BACKUP_ENCRYPT=false`. The risks above still apply to the sets it
+writes (they hold the local `.env` and development data); keep them off
+shared or synced folders.
+
 ## Reversal or migration strategy
 
 Point-in-time recovery (WAL archiving with pgBackRest) is added on the

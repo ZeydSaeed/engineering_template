@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { KeyRound } from 'lucide-react';
 import { destroy } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController';
+import EmptyState from '@/components/empty-state';
 import Heading from '@/components/heading';
 import PasskeyItem from '@/components/passkey-item';
 import PasskeyRegistration from '@/components/passkey-register';
@@ -10,22 +11,6 @@ import { useTranslations } from '@/hooks/use-translations';
 export type Props = {
     canManagePasskeys?: boolean;
     passkeys?: Passkey[];
-};
-
-const EmptyState = () => {
-    const { t } = useTranslations();
-
-    return (
-        <div className="p-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                <KeyRound className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <p className="font-medium">{t('No passkeys yet')}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-                {t('Add a passkey to sign in without a password')}
-            </p>
-        </div>
-    );
 };
 
 export default function ManagePasskeys(props: Props) {
@@ -66,7 +51,15 @@ export default function ManagePasskeys(props: Props) {
                         />
                     ))
                 ) : (
-                    <EmptyState />
+                    <EmptyState
+                        icon={KeyRound}
+                        title={t('No passkeys yet')}
+                        description={t(
+                            'Add a passkey to sign in without a password',
+                        )}
+                        headingLevel={3}
+                        bordered={false}
+                    />
                 )}
             </div>
 

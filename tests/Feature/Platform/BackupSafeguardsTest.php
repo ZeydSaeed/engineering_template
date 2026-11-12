@@ -48,9 +48,17 @@ it('names artifacts by whether the set is encrypted', function () {
         ->and(BackupSettings::encrypted())->toBeTrue();
 
     config(['platform.backup.encrypt' => false]);
+    app()->detectEnvironment(fn () => 'local');
 
     expect(BackupSettings::encrypted())->toBeFalse();
 });
+
+it('refuses unencrypted backups outside the local environment', function (string $environment) {
+    config(['platform.backup.encrypt' => false]);
+    app()->detectEnvironment(fn () => $environment);
+
+    BackupSettings::encrypted();
+})->throws(InvalidArgumentException::class, 'local environment only')->with(['production', 'staging', 'testing']);
 
 it('streams to a file and reads it back unchanged', function () {
     $file = storage_path('framework/testing-pipe-'.bin2hex(random_bytes(4)));

@@ -26,6 +26,15 @@ return [
     ],
 
     /*
+    | The component gallery (/ui): every shared component in each of its
+    | states, for development and the browser tests (ADR-0025). The route
+    | does not exist in any other environment.
+    */
+    'ui' => [
+        'gallery_environments' => ['local', 'browser'],
+    ],
+
+    /*
     | Request correlation (ADR-0009). An inbound header is reused only when it
     | matches the pattern; otherwise a UUIDv7 is generated.
     */

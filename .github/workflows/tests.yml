@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      # Phase work branches, merged into main only with the owner's approval.
+      - 'phase-*'
   pull_request:
 
 permissions:

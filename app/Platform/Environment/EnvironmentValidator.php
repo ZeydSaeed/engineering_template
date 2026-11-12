@@ -60,6 +60,12 @@ class EnvironmentValidator
             $problems[] = "The database [{$database}] is on the deny list (PLATFORM_DENIED_DATABASES).";
         }
 
+        // Unencrypted backups are allowed on the owner's local machine only
+        // (ADR-0022, amendment).
+        if (config('platform.backup.encrypt') !== true) {
+            $problems[] = 'BACKUP_ENCRYPT must be true.';
+        }
+
         return $problems;
     }
 

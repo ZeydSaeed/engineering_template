@@ -16,9 +16,21 @@ final class BackupSettings
      */
     public const ARTIFACTS = ['database' => 'database.dump', 'files' => 'files.tar', 'secrets' => 'secrets.tar'];
 
+    /**
+     * Whether sets are encrypted. BACKUP_ENCRYPT=false is honoured on the
+     * local machine only (ADR-0022, amendment); anywhere else it is refused.
+     */
     public static function encrypted(): bool
     {
-        return (bool) config('platform.backup.encrypt', true);
+        if (config('platform.backup.encrypt', true) !== false) {
+            return true;
+        }
+
+        if (! app()->environment('local')) {
+            throw new InvalidArgumentException('BACKUP_ENCRYPT=false is allowed in the local environment only.');
+        }
+
+        return false;
     }
 
     public static function artifact(string $class, bool $encrypted): string

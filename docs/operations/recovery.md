@@ -27,6 +27,8 @@ age-keygen -o database.agekey && age-keygen -y database.agekey > database.recipi
 
 ### Unencrypted sets
 
+Local development machine only: any other environment refuses
+`BACKUP_ENCRYPT=false`, and production and staging refuse to start with it.
 With `BACKUP_ENCRYPT=false` (ADR-0022, amendment) no keys are needed: sets
 hold `database.dump`, `files.tar` and `secrets.tar`, readable by anyone who
 can read them. Restore them as below without the `age -d` step

@@ -18,6 +18,7 @@ beforeEach(function () {
         'platform.security.hsts' => true,
         'platform.security.csp' => true,
         'platform.audit.hmac_key' => base64_encode(random_bytes(32)),
+        'platform.backup.encrypt' => true,
     ]);
 });
 
@@ -38,6 +39,7 @@ it('reports each unsafe setting', function (array $settings, string $problem) {
     'unset secure cookies' => [['session.secure' => null], 'SESSION_SECURE_COOKIE must be true.'],
     'plain http url' => [['app.url' => 'http://app.example.test'], 'APP_URL must use https://.'],
     'unencrypted session' => [['session.encrypt' => false], 'SESSION_ENCRYPT must be true.'],
+    'unencrypted backups' => [['platform.backup.encrypt' => false], 'BACKUP_ENCRYPT must be true.'],
     'shared cookie domain' => [['session.domain' => '.example.test'], 'SESSION_DOMAIN must be empty and SESSION_PATH "/" (host-only __Host- cookie).'],
     'cookie path' => [['session.path' => '/app'], 'SESSION_DOMAIN must be empty and SESSION_PATH "/" (host-only __Host- cookie).'],
     'hsts off' => [['platform.security.hsts' => false], 'PLATFORM_HSTS must be true.'],
