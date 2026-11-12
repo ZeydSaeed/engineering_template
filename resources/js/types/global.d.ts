@@ -1,3 +1,4 @@
+import type { WorkspacePreferences } from '@/hooks/use-preferences';
 import type { Auth } from '@/types/auth';
 import type { BulkResult } from '@/types/table';
 import type { FlashToast } from '@/types/ui';
@@ -18,6 +19,7 @@ declare module '@inertiajs/core' {
             locales: string[];
             direction: 'ltr' | 'rtl';
             translations: Record<string, string>;
+            preferences: WorkspacePreferences;
             [key: string]: unknown;
         };
         // One-off data a redirect carries (Inertia::flash on the server).

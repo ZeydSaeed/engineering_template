@@ -108,3 +108,30 @@ Phase 7 batch 3 - uploads and multi-step forms (2026-11-13)
 - Gates: SQLite 251 passed, 18 skipped; PostgreSQL 267 passed, 2 skipped;
   PHPStan 0; deptrac 0; browser 163/163; budget: base 179.3 kB (185),
   largest page +32.6 kB (35), CSS 13.9 kB (20).
+
+Phase 7 batch 4a - workspace (2026-11-13)
+- Improvements: #5 global search, #17 keyboard shortcuts, #27 contextual
+  help, #28 workspace preferences (ADR-0028).
+- Server: WorkspacePreferencesTest 11 tests (only listed values, saved
+  choices win over cookies, partial changes, one read per session, guests
+  on cookies; search limited to what the person may see, two characters,
+  % literal, five results, 60 a minute). RaceConditionsTest: two parallel
+  saves of different choices both kept, 5 rounds, real processes,
+  PostgreSQL.
+- Browser: workspace.spec.ts 12 tests in ar and en (36/36 over 3
+  repetitions), incl. axe with the search and the shortcuts list open.
+- Defects found and fixed in this batch:
+  * dialog and side-panel close button 16 px next to other controls
+    (WCAG 2.5.8, found by axe): 28 px, at the reading end;
+  * quick preference changes cancelled each other (an Inertia visit
+    cancels the one before): each save is its own request;
+  * parallel saves could overwrite each other (lost update): merge under
+    a row lock;
+  * a turned-off shortcut still worked until the page props refreshed,
+    and controls lagged behind the server: changes apply everywhere at
+    once and are undone if refused;
+  * focus did not return after the search opened by a shortcut.
+- Query budgets: the first request of a session reads the saved
+  preferences once; QueryBudgetTest measures pages within a session.
+- Gates: SQLite 262 passed, 19 skipped; PostgreSQL 279 passed, 2 skipped;
+  PHPStan 0; deptrac 0; browser 175/175; budget: base 183.3 kB (185).

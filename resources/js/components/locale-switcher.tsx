@@ -7,6 +7,7 @@ import {
     DropdownMenuRadioItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { usePreferences } from '@/hooks/use-preferences';
 import { changeLocale, useTranslations } from '@/hooks/use-translations';
 
 // Each language is named in itself, so it can be found from any language.
@@ -17,6 +18,7 @@ const NATIVE_NAMES: Record<string, { name: string; lang: string }> = {
 
 export default function LocaleSwitcher() {
     const { t, locale, locales } = useTranslations();
+    const { saved } = usePreferences();
 
     if (locales.length < 2) {
         return null;
@@ -38,7 +40,7 @@ export default function LocaleSwitcher() {
                     value={locale}
                     onValueChange={(value) => {
                         if (value !== locale) {
-                            changeLocale(value);
+                            changeLocale(value, saved);
                         }
                     }}
                 >

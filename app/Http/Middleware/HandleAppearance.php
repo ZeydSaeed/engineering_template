@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Platform\Preferences\WorkspacePreferences;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
@@ -17,9 +18,12 @@ class HandleAppearance
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $appearance = $request->cookie('appearance');
+        // A signed-in person's saved choice first (ADR-0028), then the cookie.
+        $saved = WorkspacePreferences::forRequest($request);
+        $appearance = $saved['appearance'] ?? $request->cookie('appearance');
 
-        View::share('appearance', in_array($appearance, ['light', 'dark', 'system'], true) ? $appearance : 'system');
+        View::share('appearance', in_array($appearance, WorkspacePreferences::APPEARANCES, true) ? $appearance : 'system');
+        View::share('density', $saved['density'] ?? 'comfortable');
 
         return $next($request);
     }

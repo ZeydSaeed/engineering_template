@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
+import { savePreferences } from '@/hooks/use-preferences';
 
 export type Direction = 'ltr' | 'rtl';
 
@@ -31,11 +32,18 @@ export function useTranslations() {
 }
 
 /**
- * Switches the interface language: the choice is kept in the "locale"
- * cookie (read by the SetLocale middleware) and the page reloads, so the
- * server renders the new direction and strings.
+ * Switches the interface language and reloads, so the server renders the
+ * new direction and strings. Kept in the "locale" cookie, and on the server
+ * for a signed-in person (`save`, ADR-0028), whose saved choice wins.
  */
-export function changeLocale(locale: string): void {
+export function changeLocale(locale: string, save = false): void {
     document.cookie = `locale=${encodeURIComponent(locale)};path=/;max-age=${365 * 24 * 60 * 60};SameSite=Lax`;
+
+    if (save) {
+        savePreferences({ locale }, () => window.location.reload());
+
+        return;
+    }
+
     window.location.reload();
 }

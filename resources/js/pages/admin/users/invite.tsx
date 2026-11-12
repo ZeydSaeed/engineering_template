@@ -3,6 +3,7 @@ import UserInvitationController from '@/actions/App/Http/Controllers/Admin/UserI
 import { roleLabel } from '@/components/activity-timeline';
 import FormField from '@/components/form-field';
 import Heading from '@/components/heading';
+import HelpTip from '@/components/help-tip';
 import MultiStepForm from '@/components/multi-step-form';
 import { Input } from '@/components/ui/input';
 import { useTranslations } from '@/hooks/use-translations';
@@ -108,6 +109,24 @@ export default function InviteUser({ roles }: { roles: string[] }) {
                                     >
                                         {errors.role}
                                     </p>
+                                    <HelpTip topic={t('Roles')}>
+                                        <dl className="space-y-1">
+                                            <dt className="font-medium">
+                                                {roleLabel(t, 'administrator')}
+                                            </dt>
+                                            <dd>
+                                                {t(
+                                                    'Manages people and their roles, and reads the audit trail.',
+                                                )}
+                                            </dd>
+                                            <dt className="font-medium">
+                                                {roleLabel(t, 'auditor')}
+                                            </dt>
+                                            <dd>
+                                                {t('Reads the audit trail.')}
+                                            </dd>
+                                        </dl>
+                                    </HelpTip>
                                 </fieldset>
                             ),
                         },

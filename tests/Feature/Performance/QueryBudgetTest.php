@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Platform\Preferences\WorkspacePreferences;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,13 @@ it('keeps each page within its query budget', function (string $page, bool $sign
 
     $queries = queriesDuring(function () use ($page, $signedIn, $user): void {
         ($signedIn ? $this->actingAs($user) : $this)
-            ->withSession(['auth.password_confirmed_at' => time()])
+            ->withSession([
+                'auth.password_confirmed_at' => time(),
+                // A page within a session: the first request of a session
+                // also reads the saved preferences once (ADR-0028,
+                // WorkspacePreferencesTest).
+                WorkspacePreferences::SESSION_KEY => ['user' => $user->id, 'values' => []],
+            ])
             ->get(route($page))
             ->assertOk();
     });

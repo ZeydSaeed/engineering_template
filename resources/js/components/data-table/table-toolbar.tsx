@@ -78,6 +78,8 @@ export default function TableToolbar({
                         onChange={(event) => setText(event.target.value)}
                         className="w-56 ps-8"
                         data-test="table-search"
+                        // "/" moves focus here (keyboard shortcuts, #17).
+                        data-shortcut-search
                     />
                 </div>
             </div>

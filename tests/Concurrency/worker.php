@@ -14,7 +14,9 @@ use App\Models\User;
 use App\Platform\Access\AssignRole;
 use App\Platform\Access\RevokeRole;
 use App\Platform\Outbox\OutboxRelay;
+use App\Platform\Preferences\WorkspacePreferences;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\Outbox\CountingOutboxJob;
 
@@ -44,6 +46,12 @@ try {
     $result = match ($scenario) {
         'revoke-administrator' => (function () use ($app, $args): array {
             $app->make(RevokeRole::class)->handle(User::findOrFail((int) $args[0]), User::findOrFail((int) $args[1]), Role::Administrator);
+
+            return ['ok' => true];
+        })(),
+        // args: user id, preference key, JSON value
+        'save-preference' => (function () use ($args): array {
+            WorkspacePreferences::save(Request::create('/'), (int) $args[0], [$args[1] => json_decode($args[2], true)]);
 
             return ['ok' => true];
         })(),

@@ -8,6 +8,8 @@ use App\Platform\Audit\VerifyAuditChain;
 use App\Platform\Exceptions\DomainRuleViolation;
 use App\Platform\Outbox\Outbox;
 use App\Platform\Outbox\OutboxMessage;
+use App\Platform\Preferences\UserPreference;
+use App\Platform\Preferences\WorkspacePreferences;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Support\Facades\DB;
@@ -95,4 +97,20 @@ it('relays each outbox message once with four relays, and applies each once desp
         ->and(DB::table('failed_jobs')->count())->toBe(0)
         ->and(DB::table('cache')->where('key', 'like', 'outbox-effect:%')->count())->toBe(300)
         ->and(DB::table('processed_messages')->count())->toBe(300);
+});
+
+it('keeps both of two workspace choices saved at the same moment', function () {
+    foreach (range(1, 5) as $round) {
+        $user = User::factory()->create();
+
+        // The interface saves each choice with its own request (ADR-0028).
+        $results = Parallel::run('save-preference', [
+            [$user->id, 'density', '"compact"'],
+            [$user->id, 'shortcuts', 'false'],
+        ]);
+
+        expect(array_column($results, 'ok'))->toBe([true, true], "round {$round}")
+            ->and(UserPreference::read($user->id, WorkspacePreferences::KEY))
+            ->toEqual(['density' => 'compact', 'shortcuts' => false], "round {$round}");
+    }
 });

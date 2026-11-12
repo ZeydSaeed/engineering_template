@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInvitationController;
 use App\Http\Controllers\Admin\UserRoleController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Tables\SavedViewController;
 use App\Http\Controllers\Tables\TableColumnsController;
 use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
@@ -17,6 +18,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     if (app()->environment((array) config('platform.ui.gallery_environments'))) {
         Route::inertia('ui', 'dev/gallery')->name('ui.gallery');
     }
+
+    // Global search: records the person may see (ADR-0028).
+    Route::get('search', SearchController::class)
+        ->middleware('throttle:60,1')
+        ->name('search');
 
     // A person's table columns and saved views; each controller checks the
     // table's own ability (ADR-0026).

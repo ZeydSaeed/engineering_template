@@ -3,6 +3,7 @@ import { Monitor, Moon, Sun } from 'lucide-react';
 import type { HTMLAttributes } from 'react';
 import type { Appearance } from '@/hooks/use-appearance';
 import { useAppearance } from '@/hooks/use-appearance';
+import { savePreferences, usePreferences } from '@/hooks/use-preferences';
 import { cn } from '@/lib/utils';
 import { useTranslations } from '@/hooks/use-translations';
 
@@ -13,6 +14,7 @@ export default function AppearanceToggleTab({
     const { t } = useTranslations();
 
     const { appearance, updateAppearance } = useAppearance();
+    const { saved } = usePreferences();
 
     const tabs: { value: Appearance; icon: LucideIcon; label: string }[] = [
         { value: 'light', icon: Sun, label: 'Light' },
@@ -31,7 +33,13 @@ export default function AppearanceToggleTab({
             {tabs.map(({ value, icon: Icon, label }) => (
                 <button
                     key={value}
-                    onClick={() => updateAppearance(value)}
+                    onClick={() => {
+                        updateAppearance(value);
+
+                        if (saved) {
+                            savePreferences({ appearance: value });
+                        }
+                    }}
                     className={cn(
                         'flex items-center rounded-md px-3.5 py-1.5 transition-colors',
                         appearance === value

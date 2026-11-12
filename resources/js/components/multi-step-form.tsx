@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
+import { csrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import type { RouteFormDefinition } from '@/wayfinder';
 
@@ -275,13 +276,4 @@ function NextButton({
             {label}
         </Button>
     );
-}
-
-/** Laravel's XSRF-TOKEN cookie (readable by design), for the header. */
-function csrfToken(): string {
-    const cookie = document.cookie
-        .split('; ')
-        .find((part) => part.startsWith('XSRF-TOKEN='));
-
-    return cookie ? decodeURIComponent(cookie.slice('XSRF-TOKEN='.length)) : '';
 }

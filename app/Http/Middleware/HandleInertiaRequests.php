@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Http\Middleware\SetLocale;
 use App\Platform\Localization\Translations;
+use App\Platform\Preferences\WorkspacePreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
@@ -55,6 +56,24 @@ class HandleInertiaRequests extends Middleware
             'direction' => SetLocale::direction(),
             // Sent once per full page load; a language change reloads the page.
             'translations' => Inertia::once(fn (): array => Translations::for(App::getLocale())),
+            // Workspace choices the interface applies itself (ADR-0028);
+            // language and theme are applied by the server.
+            'preferences' => $this->preferences($request),
+        ];
+    }
+
+    /**
+     * @return array{density: string, shortcuts: bool, saved: bool}
+     */
+    private function preferences(Request $request): array
+    {
+        $saved = WorkspacePreferences::forRequest($request);
+
+        return [
+            'density' => $saved['density'] ?? 'comfortable',
+            'shortcuts' => $saved['shortcuts'] ?? true,
+            // Signed in: changes are saved on the server, not only locally.
+            'saved' => $request->hasSession() && $request->user() !== null,
         ];
     }
 

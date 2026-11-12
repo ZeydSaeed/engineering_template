@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\DocumentController;
+use App\Http\Controllers\Settings\PreferencesController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -31,6 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+    // Workspace choices kept on the server (ADR-0028).
+    Route::put('settings/preferences', [PreferencesController::class, 'update'])
+        ->middleware('throttle:60,1')
+        ->name('preferences.update');
 
     // A person's own documents (ADR-0020, ADR-0027).
     Route::get('settings/documents', [DocumentController::class, 'index'])->name('documents.index');
