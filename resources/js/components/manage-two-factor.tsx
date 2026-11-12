@@ -44,6 +44,7 @@ export default function ManageTwoFactor(props: Props) {
             setSetupModalUsed(true);
         }
     }, [showSetupModal]);
+    const section = useRef<HTMLDivElement>(null);
     const prevTwoFactorEnabled = useRef(twoFactorEnabled);
 
     useEffect(() => {
@@ -59,7 +60,7 @@ export default function ManageTwoFactor(props: Props) {
     }
 
     return (
-        <div className="space-y-6">
+        <div ref={section} className="space-y-6">
             <Heading
                 variant="small"
                 title={t('Two-factor authentication')}
@@ -104,23 +105,30 @@ export default function ManageTwoFactor(props: Props) {
                     </p>
 
                     <div>
-                        {hasSetupData ? (
-                            <Button onClick={() => setShowSetupModal(true)}>
-                                <ShieldCheck />
-                                {t('Continue setup')}
-                            </Button>
-                        ) : (
-                            <Form
-                                {...enable.form()}
-                                onSuccess={() => setShowSetupModal(true)}
-                            >
-                                {({ processing }) => (
-                                    <Button type="submit" disabled={processing}>
-                                        {t('Enable 2FA')}
-                                    </Button>
-                                )}
-                            </Form>
-                        )}
+                        {/* One button for both steps, so focus stays on it
+                            when "Enable 2FA" becomes "Continue setup". */}
+                        <Form
+                            {...enable.form()}
+                            onSuccess={() => setShowSetupModal(true)}
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type={hasSetupData ? 'button' : 'submit'}
+                                    disabled={processing}
+                                    onClick={
+                                        hasSetupData
+                                            ? () => setShowSetupModal(true)
+                                            : undefined
+                                    }
+                                    data-test="two-factor-setup"
+                                >
+                                    {hasSetupData && <ShieldCheck />}
+                                    {hasSetupData
+                                        ? t('Continue setup')
+                                        : t('Enable 2FA')}
+                                </Button>
+                            )}
+                        </Form>
                     </div>
                 </div>
             )}
@@ -129,6 +137,15 @@ export default function ManageTwoFactor(props: Props) {
                 <Suspense fallback={null}>
                     <TwoFactorSetupModal
                         isOpen={showSetupModal}
+                        onCloseAutoFocus={(event) => {
+                            const button =
+                                section.current?.querySelector('button');
+
+                            if (button) {
+                                event.preventDefault();
+                                button.focus();
+                            }
+                        }}
                         onClose={() => setShowSetupModal(false)}
                         requiresConfirmation={requiresConfirmation}
                         twoFactorEnabled={twoFactorEnabled}

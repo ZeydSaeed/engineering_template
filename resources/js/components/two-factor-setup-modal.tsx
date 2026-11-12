@@ -244,11 +244,15 @@ type Props = {
     clearSetupData: () => void;
     fetchSetupData: () => Promise<void>;
     errors: string[];
+    // Where focus goes on close: the button that opened the window may
+    // have been replaced meanwhile (Enable 2FA -> Continue setup).
+    onCloseAutoFocus?: (event: Event) => void;
 };
 
 export default function TwoFactorSetupModal({
     isOpen,
     onClose,
+    onCloseAutoFocus,
     requiresConfirmation,
     twoFactorEnabled,
     qrCodeSvg,
@@ -331,7 +335,10 @@ export default function TwoFactorSetupModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+                className="sm:max-w-md"
+                onCloseAutoFocus={onCloseAutoFocus}
+            >
                 <DialogHeader className="flex items-center justify-center">
                     <GridScanIcon />
                     <DialogTitle>{t(modalConfig.title)}</DialogTitle>

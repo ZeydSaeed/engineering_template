@@ -171,8 +171,8 @@ test.describe('second-factor setup', () => {
         await page.keyboard.press('Escape');
         await expect(dialog).toBeHidden();
         // Closing without confirming leaves setup to continue later.
-        await expect(
-            page.getByRole('button', { name: /Enable 2FA|Continue setup/ }),
-        ).toBeFocused();
+        const setup = page.locator('[data-test="two-factor-setup"]');
+        await expect(setup).toHaveText(/Continue setup/);
+        await expect(setup).toBeFocused();
     });
 });
