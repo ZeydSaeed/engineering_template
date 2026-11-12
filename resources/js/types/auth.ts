@@ -12,6 +12,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    // What the interface may offer; the server checks every request anyway.
+    permissions: string[];
 };
 
 export type Passkey = {

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 /*
@@ -121,3 +122,57 @@ for (const locale of ['ar', 'en']) {
         });
     });
 }
+
+test.describe('second-factor setup', () => {
+    // A person without a second factor, signed in with the password only.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test('is required, and its window opens, keeps focus and gives it back', async ({
+        page,
+    }) => {
+        const user = JSON.parse(
+            readFileSync('storage/app/private/browser/user.json', 'utf8'),
+        ) as { password: string; setup_email: string };
+
+        await page
+            .context()
+            .addCookies([{ name: 'locale', value: 'en', url: baseURL }]);
+        await page.goto('/login');
+        await page.fill('#email', user.setup_email);
+        await page.fill('#password', user.password);
+        await page.click('[data-test="login-button"]');
+        await page.waitForURL((url) => !url.pathname.endsWith('/login'));
+
+        // Anything else is refused until a second factor exists.
+        await page.goto('/dashboard');
+        if (page.url().includes('confirm-password')) {
+            await page.fill('#password', user.password);
+            await page.click('[data-test="confirm-password-button"]');
+        }
+        await expect(page).toHaveURL(/\/settings\/security$/);
+
+        const enable = page.getByRole('button', { name: 'Enable 2FA' });
+        await enable.click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('svg').first()).toBeVisible();
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () =>
+                        !!document
+                            .querySelector('[role="dialog"]')
+                            ?.contains(document.activeElement),
+                ),
+            )
+            .toBe(true);
+
+        await page.keyboard.press('Escape');
+        await expect(dialog).toBeHidden();
+        // Closing without confirming leaves setup to continue later.
+        const setup = page.locator('[data-test="two-factor-setup"]');
+        await expect(setup).toHaveText(/Continue setup/);
+        await expect(setup).toBeFocused();
+    });
+});

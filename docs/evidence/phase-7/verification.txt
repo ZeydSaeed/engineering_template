@@ -49,3 +49,34 @@ NOT TESTED / not covered by axe
 - Screen-reader walkthrough (NVDA/VoiceOver) and keyboard-only walkthrough.
 - Safari and Firefox (Chromium only).
 - Visual regression baselines (screenshots are evidence, not compared).
+
+Phase 7 batch 2 - data (2026-11-12/13)
+- Improvements: #2 tables, #3 columns, #4 saved views, #9 timeline,
+  #16 side panel, #23 bulk actions, #26 breadcrumbs (ADR-0026).
+- Large table, PostgreSQL 18, 10,000 users (LargeTableTest), per request:
+  first page 18.6 ms / 5 queries / 0.2 MB; sort by email 34.7 ms / 5 /
+  3.7 MB; search 34.5 ms / 5 / 3.7 MB; filter 23.2 ms / 5 / 3.7 MB; last
+  page 43.4 ms / 5 / 3.7 MB. Limits: 12 queries, 1.5 s, 32 MB.
+- Bundle (gzipped): base 178.6 kB (budget 185); largest page addition
+  31.3 kB, admin/users (budget 35); CSS 13.8 kB (budget 20). Details panel,
+  bulk dialog and two-factor setup window load on demand (security page
+  -7 kB).
+- Defects found and fixed in this batch:
+  * search escaping did not work on SQLite (LIKE has no default escape):
+    explicit ESCAPE on both databases;
+  * a drawer opened from code did not return focus to its opener;
+  * the two-factor setup window lost focus on close because two different
+    buttons replaced each other; one button now changes its label;
+  * the saved-views manage window stayed open and empty after deleting the
+    last view;
+  * sharing permissions added one query per signed-in page: budgets raised
+    by one, on purpose (QueryBudgetTest);
+  * migrations need the owner role: the runtime role cannot create tables
+    (expected, Phase 2 design); runtime privileges on the new tables
+    checked: SELECT/INSERT/UPDATE/DELETE, no TRUNCATE.
+- CI 3967013 (before the focus fix): ci and postgres passed, browser
+  failed on the two-factor focus defect; fixed and re-verified locally:
+  setup test 5/5 on repetition, full browser suite 129/129.
+- Local gates after the fixes: SQLite 241 passed, 18 skipped; PostgreSQL
+  257 passed, 2 skipped (Redis, ClamAV in CI); PHPStan 0; deptrac 0;
+  budget within limits; browser 129/129.

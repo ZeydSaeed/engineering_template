@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Platform\Access\Contracts\HoldsRoles;
 use App\Platform\Http\Middleware\SetLocale;
 use App\Platform\Localization\Translations;
 use Illuminate\Http\Request;
@@ -44,6 +45,9 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                // What the interface may offer; the server still checks
+                // every request (ADR-0014).
+                'permissions' => $this->permissions($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'locale' => App::getLocale(),
@@ -52,5 +56,30 @@ class HandleInertiaRequests extends Middleware
             // Sent once per full page load; a language change reloads the page.
             'translations' => Inertia::once(fn (): array => Translations::for(App::getLocale())),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function permissions(Request $request): array
+    {
+        $user = $request->user();
+
+        if (! $user instanceof HoldsRoles) {
+            return [];
+        }
+
+        $permissions = [];
+
+        foreach ($user->roles() as $role) {
+            foreach ($role->permissions() as $permission) {
+                $permissions[] = (string) $permission->value;
+            }
+        }
+
+        $permissions = array_values(array_unique($permissions));
+        sort($permissions);
+
+        return $permissions;
     }
 }

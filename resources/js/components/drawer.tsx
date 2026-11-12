@@ -1,4 +1,5 @@
 import { useDirection } from '@radix-ui/react-direction';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import {
     Sheet,
@@ -39,6 +40,15 @@ export default function Drawer({
     children: ReactNode;
 }) {
     const side = useDirection() === 'rtl' ? 'left' : 'right';
+    // Opened from code (no trigger), Radix does not know the opener: keep
+    // what had focus when it opened, to give focus back on close.
+    const opener = useRef<HTMLElement | null>(null);
+
+    useEffect(() => {
+        if (open && !trigger && document.activeElement instanceof HTMLElement) {
+            opener.current = document.activeElement;
+        }
+    }, [open, trigger]);
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -46,6 +56,12 @@ export default function Drawer({
             <SheetContent
                 side={side}
                 data-slot="drawer"
+                onCloseAutoFocus={(event) => {
+                    if (!trigger && opener.current?.isConnected) {
+                        event.preventDefault();
+                        opener.current.focus();
+                    }
+                }}
                 className={cn('w-full gap-0 sm:max-w-md', className)}
             >
                 <SheetHeader className="border-b">

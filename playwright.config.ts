@@ -38,12 +38,17 @@ export default defineConfig({
     workers: 1,
     forbidOnly: !!process.env.CI,
     retries: 0,
-    reporter: [['list']],
+    // On CI, failures also become annotations on the run, readable
+    // without downloading the log.
+    reporter: process.env.CI ? [['github'], ['list']] : [['list']],
     globalSetup: './tests/browser/global-setup.ts',
     use: {
         baseURL: `http://127.0.0.1:${port}`,
         storageState: AUTH_STATE,
         trace: 'retain-on-failure',
+        // The app honours reduced motion (app.css), so nothing is checked
+        // half-faded mid-animation, on fast and slow machines alike.
+        contextOptions: { reducedMotion: 'reduce' },
     },
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
     webServer: {

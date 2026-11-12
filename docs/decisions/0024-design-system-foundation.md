@@ -51,11 +51,17 @@ theme script was also blocked by our own Content-Security-Policy (no nonce).
   A/AA with zero violations, no horizontal overflow, sidebar side.
   Runs against `php artisan serve` with its own `database/browser.sqlite`,
   signing in with password and a TOTP code like a person.
-- Bundle budget (`npm run budget`): first-visit JS and CSS per page,
-  gzipped: 210 kB and 20 kB. Measured 177-201 kB JS; most is react-dom,
-  Inertia, tailwind-merge and the Radix menus shared by every layout.
-  Splitting layouts into lazy chunks would save the sign-in pages about
-  40 kB at the cost of a round trip on every application page; not done.
+- Bundle budget (`npm run budget`), first-visit JS gzipped, in two parts
+  since Phase 7 batch 2: the base every page loads (at most 185 kB;
+  measured 178.6 kB, mostly react-dom, Inertia, tailwind-merge and the
+  Radix menus and toasts every layout uses) and each page's own chunks on
+  top (at most 35 kB; largest 31.3 kB, the user list). CSS at most 20 kB.
+  One total limit (210 kB in 7.1) could not tell base growth from page
+  growth. Interaction-only parts load on demand (the user details panel,
+  the bulk role dialog, the two-factor setup window: -7 kB on the security
+  page). Splitting layouts into lazy chunks would save the sign-in pages
+  about 40 kB at the cost of a round trip on every application page; not
+  done.
 - CI job `browser` runs build, budget and the browser tests, and keeps the
   screenshots as an artifact.
 
