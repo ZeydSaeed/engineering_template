@@ -101,8 +101,9 @@ jobs:
           deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, SSPL-1.0
 
   # A passive scan of what a visitor reaches without signing in, served the
-  # way a server serves it: the deploy/ templates for Nginx and PHP-FPM,
-  # HTTPS, APP_ENV=production (scripts/ci/production-like.sh). Every alert
+  # way a server serves it: this commit's release artifact deployed with
+  # scripts/deploy/deploy.sh onto a runner prepared from the deploy/
+  # templates (Nginx, PHP-FPM, HTTPS, APP_ENV=production). Every alert
   # fails the job unless .zap/rules.tsv lists it with a reason.
   zap:
     runs-on: ubuntu-latest
@@ -126,17 +127,16 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Build
-        run: |
-          composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
-          cp .env.example .env
-          php artisan key:generate
-          npm ci
-          npm run build
-          rm .env
+      - name: Build the release
+        run: bash scripts/release/build.sh dist
 
-      - name: Serve like production
-        run: bash scripts/ci/production-like.sh
+      - name: Prepare the runner as a server
+        run: bash scripts/ci/server-setup.sh
+
+      - name: Deploy
+        run: |
+          sudo SMOKE_HOST=template.test RELOAD="systemctl reload php8.5-fpm" \
+            bash scripts/deploy/deploy.sh "dist/engineering-template-$GITHUB_SHA.tar.gz"
 
       - name: ZAP image
         run: docker pull --quiet ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af

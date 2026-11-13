@@ -53,3 +53,4 @@ yarn-error.log
 # Release artifacts (scripts/release/build.sh)
 /dist
 /again
+/RELEASE.json

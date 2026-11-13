@@ -1,0 +1,110 @@
+name: deploy-staging
+
+# Deploys one commit's release artifact to staging, by hand only
+# (ADR-0032). The artifact is the one release.yml built and checked for
+# that commit; it is verified again, copied to the server and installed
+# with scripts/deploy/deploy.sh, which smoke-tests it and rolls back by
+# itself if it fails.
+#
+# It does nothing until the owner configures a GitHub environment named
+# "staging" (with required reviewers) holding:
+#   secrets  STAGING_SSH_KEY       private key of the deploy account
+#            STAGING_KNOWN_HOSTS   the server's host key line(s)
+#   vars     STAGING_SSH_TARGET    deploy@host
+#            STAGING_SITE          the site's host name (smoke test)
+# There is no production workflow: production needs its own approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full commit SHA with a successful release run
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+
+    permissions:
+      contents: read
+      actions: read
+
+    env:
+      COMMIT: ${{ inputs.commit }}
+      SSH_TARGET: ${{ vars.STAGING_SSH_TARGET }}
+      SITE: ${{ vars.STAGING_SITE }}
+
+    steps:
+      - name: Configured and a valid commit
+        env:
+          HAS_KEY: ${{ secrets.STAGING_SSH_KEY != '' }}
+          HAS_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS != '' }}
+        run: |
+          if [ "$HAS_KEY" != true ] || [ "$HAS_HOSTS" != true ] || [ -z "$SSH_TARGET" ] || [ -z "$SITE" ]; then
+            echo "::error title=Staging is not configured::set STAGING_SSH_KEY, STAGING_KNOWN_HOSTS, STAGING_SSH_TARGET and STAGING_SITE in the staging environment"
+            exit 1
+          fi
+          if ! [[ $COMMIT =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=Commit::give the full 40-character commit SHA"
+            exit 1
+          fi
+
+      - name: Checkout the commit's scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Find the commit's release run
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$COMMIT" \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$id" ]; then
+            echo "::error title=No release::no successful release run for $COMMIT"
+            exit 1
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ inputs.commit }}
+          path: dist
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify
+        run: bash scripts/release/verify.sh "dist/engineering-template-$COMMIT.tar.gz"
+
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh_opts=(-i ~/.ssh/deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          remote="/tmp/deploy-$COMMIT"
+          ssh "${ssh_opts[@]}" "$SSH_TARGET" "mkdir -p $remote/scripts/release $remote/scripts/deploy"
+          scp "${ssh_opts[@]}" "dist/engineering-template-$COMMIT.tar.gz" "dist/engineering-template-$COMMIT.tar.gz.sha256" "$SSH_TARGET:$remote/"
+          scp "${ssh_opts[@]}" scripts/release/verify.sh "$SSH_TARGET:$remote/scripts/release/"
+          scp "${ssh_opts[@]}" scripts/deploy/deploy.sh scripts/deploy/smoke.sh scripts/deploy/rollback.sh "$SSH_TARGET:$remote/scripts/deploy/"
+          ssh "${ssh_opts[@]}" "$SSH_TARGET" \
+            "sudo SMOKE_HOST=$SITE bash $remote/scripts/deploy/deploy.sh $remote/engineering-template-$COMMIT.tar.gz; status=\$?; rm -rf $remote; exit \$status"
+
+      - name: Forget the key
+        if: always()
+        run: rm -f ~/.ssh/deploy

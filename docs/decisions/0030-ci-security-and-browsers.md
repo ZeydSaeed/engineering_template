@@ -20,7 +20,7 @@ risk). The repository is public, so every commit in its history is public.
   the application as a server runs it: the `deploy/` Nginx and PHP-FPM
   templates, its own user, a release under `/srv` with shared storage,
   HTTPS and `APP_ENV=production` with the environment checks on
-  (`scripts/ci/production-like.sh`). Scanning `php artisan serve` instead
+  (`scripts/ci/production-like.sh`; since batch 8.3 `scripts/ci/server-setup.sh` and the release deployed with `scripts/deploy/deploy.sh`, ADR-0032). Scanning `php artisan serve` instead
   reported headers missing on assets that Nginx serves in production, and
   would never have tested the templates. It also runs weekly, because advisories
   appear without any change here.

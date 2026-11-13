@@ -113,3 +113,43 @@ Gates
   batch; the browser suites ran in CI on all three engines.
 - CI on b566668: tests, security and release all green; the second build
   matched the first.
+
+## Batch 8.3 (2026-11-13): deploy, smoke test, rollback (ADR-0032)
+
+Implemented
+- scripts/deploy/deploy.sh, smoke.sh, rollback.sh (server side, as root);
+  scripts/ci/server-setup.sh (was production-like.sh; prepares a runner
+  as a server, deploys nothing) and scripts/ci/rehearse-deploy.sh.
+- /health/ready names the release it serves (RELEASE.json; a full SHA or
+  null); MetricsAndReadinessTest.
+- release.yml job "rehearse"; the ZAP job scans a release deployed with
+  deploy.sh; deploy-staging.yml (by hand, staging environment, stops
+  until configured; no production workflow).
+- CiWorkflowsTest: a job with an environment must be workflow_dispatch
+  only and not production. Planted violations (a push trigger; an
+  environment named production) both fail the test; restored, it passes.
+- Runbook: deploy procedure, rollback command, migration rule.
+
+Rehearsal (CI run 43462645600, job rehearse, commit 38d89c0), the release
+answering after each step, read from /health/ready through Nginx:
+  1. deploy B (A relabelled)                      bbbbbbbbbbbb
+  2. deploy A                                     38d89c0be19f
+  3. rollback.sh (previous live release)          bbbbbbbbbbbb
+  4. deploy A again (already unpacked)            38d89c0be19f
+  5. deploy C (main script missing): smoke test
+     fails, deploy.sh returns to A, exit 1        38d89c0be19f
+  6. deploy A while live: no change               38d89c0be19f
+
+Gates (this batch's code)
+- SQLite: 282 passed, 19 skipped; PostgreSQL: 299 passed, 2 skipped;
+  PHPStan 0; deptrac 0.
+- CI on 38d89c0: tests (ci, postgres, chromium, firefox, webkit),
+  security (secrets, sast, dependencies, zap against the deployed
+  release), release (build twice, verify, SBOM, rehearse): all green;
+  attest skipped (main only).
+
+Not done here
+- The rehearsal ran on GitHub-hosted Ubuntu runners, not on this PC (no
+  Linux with systemd here; WSL exists but installing Nginx/PHP-FPM in it
+  would be outside the workspace and was not approved).
+- deploy-staging has never run: no staging environment is configured.
