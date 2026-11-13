@@ -111,4 +111,3 @@ it('gives every relaxed ZAP rule a reason', function () {
 
     expect($rules)->toBeGreaterThan(0);
 });
-

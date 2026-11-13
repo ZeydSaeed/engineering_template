@@ -25,10 +25,21 @@ async function axe(page: Page, label: string) {
     const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
         .analyze();
+    // A contrast failure names its colours and ratio, so a failure on CI
+    // says what was measured.
+    const detail = (node: { any: Array<{ data?: unknown }> }) => {
+        const data = node.any[0]?.data as
+            | { fgColor?: string; bgColor?: string; contrastRatio?: number }
+            | undefined;
+
+        return data?.contrastRatio
+            ? ` (${data.fgColor} on ${data.bgColor}: ${data.contrastRatio})`
+            : '';
+    };
     expect(
         results.violations.map(
             (v) =>
-                `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`,
+                `${v.id}: ${v.nodes.map((n) => n.target.join(' ') + detail(n)).join(' | ')}`,
         ),
         label,
     ).toEqual([]);

@@ -13,6 +13,17 @@
 #   scripts/ci/production-like.sh            # then https://localhost
 set -euo pipefail
 
+# A failure names its line and command, with the server logs, as
+# annotations on the run.
+failed() {
+    echo "::error title=production-like.sh line $1::$2"
+    for log in /var/log/nginx/error.log "/var/log/php${PHP:-8.5}-fpm.log" /srv/template/shared/storage/logs/laravel.log; do
+        [ -f "$log" ] && sudo tail -n 15 "$log" | while IFS= read -r line; do echo "::error title=$(basename "$log")::$line"; done
+    done
+    return 0
+}
+trap 'failed "$LINENO" "$BASH_COMMAND"' ERR
+
 if [ "${CI:-}" != "true" ] || [ "${GITHUB_ACTIONS:-}" != "true" ]; then
     echo "production-like.sh changes the machine; it runs on CI runners only." >&2
     exit 1
