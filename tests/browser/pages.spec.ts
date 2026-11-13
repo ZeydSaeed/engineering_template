@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { pageReady } from './lib/ready';
 
 /*
 | Every page in both languages and themes, at phone and desktop widths
@@ -52,7 +53,7 @@ async function open(
         { name: 'appearance', value: theme, url: baseURL },
     ]);
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await pageReady(page);
     await page.evaluate(() => document.fonts.ready);
 }
 

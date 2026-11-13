@@ -10,6 +10,7 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
+import { currentOpener } from '@/lib/opener';
 import { cn } from '@/lib/utils';
 
 /**
@@ -45,8 +46,8 @@ export default function Drawer({
     const opener = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
-        if (open && !trigger && document.activeElement instanceof HTMLElement) {
-            opener.current = document.activeElement;
+        if (open && !trigger) {
+            opener.current = currentOpener();
         }
     }, [open, trigger]);
 

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { pageReady } from './lib/ready';
 
 /*
 | Notifications (#8), dashboard widgets (#1), reports and charts (#21) and
@@ -15,7 +16,7 @@ async function open(page: Page, locale: string, path: string, width = 1366) {
         .addCookies([{ name: 'locale', value: locale, url: baseURL }]);
     await page.setViewportSize({ width, height: 900 });
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await pageReady(page);
 }
 
 async function axe(page: Page, label: string) {
@@ -157,7 +158,7 @@ test.describe('tablet layout', () => {
             });
             const page = await context.newPage();
             await page.goto(`${baseURL}/dashboard`);
-            await page.waitForLoadState('networkidle');
+            await pageReady(page);
 
             await expect(
                 page.locator('[data-slot="sidebar"][data-state]'),

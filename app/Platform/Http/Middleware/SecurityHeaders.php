@@ -25,6 +25,22 @@ class SecurityHeaders
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        // Nothing here may be embedded by another site, and nothing from
+        // another origin loads here without its consent (ZAP 90004, Phase
+        // 8). Not while the Vite dev server serves the assets locally.
+        $headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+
+        if ($this->viteDevServer() === null) {
+            $headers->set('Cross-Origin-Embedder-Policy', 'require-corp');
+        }
+
+        // PHP's own version header, if expose_php was left on (the FPM
+        // template turns it off; ZAP 10037).
+        $headers->remove('X-Powered-By');
+
+        if (! headers_sent()) {
+            header_remove('X-Powered-By');
+        }
 
         if (! $headers->has('X-Frame-Options')) {
             $headers->set('X-Frame-Options', 'DENY');

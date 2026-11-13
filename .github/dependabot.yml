@@ -10,3 +10,29 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # Application dependencies: grouped weekly pull requests, only for
+  # releases at least two weeks old. Nothing merges without review.
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 3
+    groups:
+      composer:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 3
+    groups:
+      npm:
+        patterns:
+          - "*"

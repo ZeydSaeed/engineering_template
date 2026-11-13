@@ -1,0 +1,78 @@
+Phase 8 verification - Testing & CI/CD (ADR-0030)
+Machine: local development PC (Windows 10, PHP 8.5.12, Node 24,
+Playwright 1.65 with Chromium headless shell, Firefox 1572, WebKit 2388)
+and GitHub-hosted ubuntu-latest runners.
+
+## Batch 8.1 (2026-11-13): CI security checks and three browser engines
+
+Implemented
+- security workflow: Gitleaks 8.30.1 over every commit (binary checked
+  against its published SHA-256), Semgrep 1.182.1 (php, typescript, react,
+  javascript, secrets), composer audit and npm audit at any severity,
+  dependency review on pull requests, ZAP 2.17.0 baseline (image by
+  digest); push, pull request, weekly and on demand.
+- ZAP scans the application served like production by
+  scripts/ci/production-like.sh: deploy/ Nginx and PHP-FPM templates, own
+  Linux user, release under /srv with shared storage and .env, HTTPS,
+  APP_ENV=production with the environment checks passing.
+- tests workflow: Chromium, Firefox and WebKit as parallel jobs;
+  concurrency (newer push replaces a running branch run); time limits.
+- Dependabot for Composer and npm (grouped, 14-day cooldown).
+- CiWorkflowsTest (pinning, permissions, time limits, no fork triggers,
+  no persisted checkout credentials, reasons for every ignored finding);
+  DeployTemplatesTest (static file headers, Nginx 1.24 compatibility);
+  AuditLabelsTest; SecurityHeadersTest (CORP, COEP, no X-Powered-By).
+- docs/standards/ci.md, ADR-0030.
+
+Local checks
+- Gitleaks: 22 commits, 1 finding = RFC 6238 test vector
+  (tests/load/selftest.js), ignored by fingerprint with its reason; then
+  no leaks.
+- Semgrep: 259 files, 0 findings.
+- composer audit: no advisories. npm audit: 1 low (@babel/core 8.0.0-rc.4,
+  GHSA-4x5r-pxfx-6jf8) -> @babel/core ~8.0.9 (8.0.10): 0 vulnerabilities.
+
+ZAP (CI, production-like server, signed out)
+- First scan against php artisan serve: replaced, because Nginx serves
+  assets in production. Against Nginx/FPM: 58 rules pass; fixed CORP,
+  COEP, X-Powered-By, and HSTS/CORP/Permissions-Policy/nosniff on files
+  Nginx serves (build/, icons, robots.txt); decided with reasons in
+  .zap/rules.tsv: XSRF-TOKEN readable by design (ZAP named only this
+  cookie), theme in localStorage, style-src 'unsafe-inline' (ADR-0016),
+  Symfony redirect pages, informational cache and session notes.
+- Final run: zap job success.
+
+Defects found and fixed (details in ADR-0030)
+- deploy/nginx/app.conf: `http2 on;` - Nginx failed to start on Ubuntu
+  24.04 (1.24). Found only by serving the template for real.
+- Files served by Nginx itself lacked the headers PHP sends.
+- WebKit: focus not returned to a clicked opener (search, user panel).
+- Activity timeline showed `user.invited` as code.
+- Table search could resend old text in one render (suspected cause of
+  one WebKit failure; not reproduced).
+- Two Pest assertions misused (message passed as a value); one would have
+  let a forbidden workflow trigger through. Checked with planted
+  violations: CiWorkflowsTest fails on a missing image digest and on a
+  pull_request_target trigger; AuditLabelsTest fails without the label.
+- Local APP_NAME was EXAMIS (not committed) and showed in the Phase 7
+  screenshots in the public repository; renamed locally, screenshots
+  replaced. Older copies remain in git history.
+- Test harness: networkidle replaced by lib/ready.ts (Firefox);
+  Playwright's Firefox crashes when polling unmounting elements after axe
+  (waits done inside the page); axe waits for the table at rest (a frame
+  mid-fade measured 4.44:1 against 6.39:1 at rest).
+
+Gates (this batch's final code)
+- SQLite (composer ci:check): 280 passed, 19 skipped; PHPStan 0; deptrac 0.
+- PostgreSQL (composer test:pgsql): 297 passed, 2 skipped (Redis, ClamAV:
+  CI only).
+- Bundle: base 181.9 kB (budget 185).
+- Browsers, local: Chromium 205/205; WebKit 205/205; Firefox 204/205 in
+  the full run (Playwright Firefox page crash after axe, then mitigated),
+  data.spec 3 x 12/12 on Firefox after the mitigation, 12/12 on Chromium
+  and WebKit.
+- CI: see the batch commit's runs.
+
+Not verified
+- Real Safari on macOS/iOS (WebKit is its engine only).
+- ZAP locally (no Docker on this machine).

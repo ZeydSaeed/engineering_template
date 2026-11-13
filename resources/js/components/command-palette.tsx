@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { useMainNavigation } from '@/hooks/use-main-navigation';
 import { useTranslations } from '@/hooks/use-translations';
+import { currentOpener } from '@/lib/opener';
 import { cn, toUrl } from '@/lib/utils';
 import { index as documentsIndex } from '@/routes/documents';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -49,8 +50,8 @@ export default function CommandPalette({
     const opener = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
-        if (open && document.activeElement instanceof HTMLElement) {
-            opener.current = document.activeElement;
+        if (open) {
+            opener.current = currentOpener();
         }
     }, [open]);
 

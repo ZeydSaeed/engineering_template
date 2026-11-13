@@ -57,6 +57,10 @@ function actionLabel(t: Translate, entry: TimelineEntry): string {
             return t('File uploaded');
         case 'file.rejected':
             return t('File rejected');
+        case 'user.invited':
+            return role
+                ? t('Invited as :role', { role })
+                : t('Invited to the application');
         default:
             return entry.action;
     }
