@@ -49,3 +49,7 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
+
+# Release artifacts (scripts/release/build.sh)
+/dist
+/again
