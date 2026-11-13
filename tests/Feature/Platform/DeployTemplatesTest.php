@@ -61,3 +61,11 @@ it('gives the built assets Nginx serves the headers PHP gives pages', function (
         ->toContain('Cross-Origin-Resource-Policy "same-origin" always')
         ->toContain('Permissions-Policy');
 });
+
+it('uses only directives the Nginx of the supported Ubuntu LTS knows', function () {
+    $nginx = (string) file_get_contents(base_path('deploy/nginx/app.conf'));
+
+    // `http2 on;` needs Nginx 1.25.1; Ubuntu 24.04 ships 1.24 (Phase 8).
+    expect($nginx)->not->toMatch('/^\s*http2\s+on\s*;/m')
+        ->and($nginx)->toContain('listen 443 ssl http2;');
+});
