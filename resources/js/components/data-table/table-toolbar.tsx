@@ -44,9 +44,16 @@ export default function TableToolbar({
     const { t } = useTranslations();
     const searchId = useId();
     const [text, setText] = useState(search);
+    const [followed, setFollowed] = useState(search);
 
-    // Follows navigation (a saved view, clearing filters).
-    useEffect(() => setText(search), [search]);
+    // Follows navigation (a saved view, clearing filters), during render:
+    // synced in an effect, one render would pair the old text with the new
+    // search and could send the old text again (suspected in one WebKit
+    // failure on CI, Phase 8).
+    if (search !== followed) {
+        setFollowed(search);
+        setText(search);
+    }
 
     useEffect(() => {
         if (text === search) {

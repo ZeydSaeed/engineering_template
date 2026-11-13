@@ -55,10 +55,35 @@ risk). The repository is public, so every commit in its history is public.
   while the Vite dev server runs); `X-Powered-By` removed by the
   application as well as by the FPM template; the Nginx `/build/` block
   sends CORP and Permissions-Policy too.
+- Found by serving the templates for real: `http2 on;` stopped Nginx from
+  starting on Ubuntu 24.04 (Nginx 1.24 has no such directive); HTTP/2 is
+  now a `listen` parameter, which every version accepts. The icons and
+  robots.txt at the top of `public/`, and the built assets, lacked HSTS,
+  CORP and Permissions-Policy, which PHP sends but Nginx serves these
+  files itself; both locations now send them (DeployTemplatesTest).
+- The scan uses a dotted host name (`template.test`): Java clients send no
+  server name for `localhost`, and the template rightly refuses TLS to
+  unnamed hosts.
 - By design, kept with a reason in `.zap/rules.tsv`: the readable
   XSRF-TOKEN cookie, the theme choice in localStorage, ZAP's note that the
   site is a JavaScript application, and `style-src 'unsafe-inline'`
   (ADR-0016, residual risk).
+
+## Other defects found on the way
+
+- WebKit: focus did not return to a button clicked to open the search or
+  a panel (Safari does not focus clicked buttons, and a click inside a
+  focusable table focuses the table): `lib/opener.ts` remembers the
+  control pressed, loaded at start-up.
+- The activity timeline showed `user.invited` as code; it now reads as
+  words, and AuditLabelsTest fails for any recorded action without a label.
+- The table search synced its text in an effect, leaving one render where
+  the old text could be sent again (suspected in one WebKit failure); it
+  now follows the server during render.
+- Two Pest assertions passed a message where Pest expects a value
+  (`toContain`, `not->toHaveKey`); the second would have let a forbidden
+  trigger through. Both now assert on booleans, and each was checked
+  against a planted violation.
 
 ## Consequences
 

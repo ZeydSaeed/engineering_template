@@ -22,6 +22,15 @@ async function openUsers(page: Page, locale: string, query = '') {
 }
 
 async function axe(page: Page, label: string) {
+    // Measured at rest: a table that has just reloaded fades back from 60%
+    // opacity, and a frame mid-fade fails contrast (seen in WebKit on CI:
+    // the muted text at about 85%, 4.44:1, against 6.39:1 at rest).
+    const table = page.locator('[data-slot="data-table"] table');
+
+    if ((await table.count()) > 0) {
+        await expect(table.first()).toHaveCSS('opacity', '1');
+    }
+
     const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
         .analyze();
@@ -187,6 +196,14 @@ for (const locale of ['ar', 'en']) {
             await page.locator('[data-test="bulk-assign"]').click();
             await page.locator('[data-test="confirm-bulk"]').click();
 
+            // Waited for inside the page while the confirmation unmounts:
+            // after axe, polling from outside can crash Playwright's Firefox
+            // (as in the side-panel test below; ADR-0030).
+            await page.waitForFunction(
+                () =>
+                    !!document.querySelector('[data-slot="bulk-result"]') &&
+                    !document.querySelector('[data-slot="dialog-overlay"]'),
+            );
             const result = page.locator('[data-slot="bulk-result"]');
             await expect(result).toBeVisible();
             // Measured once the confirmation has closed and the table has
