@@ -111,3 +111,26 @@ it('gives every relaxed ZAP rule a reason', function () {
 
     expect($rules)->toBeGreaterThan(0);
 });
+
+it('deploys only by hand, and never to production', function () {
+    foreach (workflows() as $name => $workflow) {
+        $triggers = array_keys((array) ($workflow['on'] ?? $workflow[true] ?? []));
+
+        foreach ((array) $workflow['jobs'] as $job => $definition) {
+            $environment = $definition['environment'] ?? null;
+            $environment = is_array($environment) ? ($environment['name'] ?? null) : $environment;
+
+            if ($environment === null) {
+                continue;
+            }
+
+            // A job that reaches a server runs only when a person starts it
+            // (ADR-0032), and production has no workflow yet: it needs the
+            // owner's own approval.
+            expect($triggers)->toBe(['workflow_dispatch'], "{$name} {$job}")
+                ->and(str_contains(strtolower((string) $environment), 'prod'))->toBeFalse("{$name} {$job} targets production");
+        }
+    }
+
+    expect(workflows())->toHaveKey('deploy-staging.yml');
+});

@@ -44,9 +44,25 @@ it('reports dead outbox messages and stale scans', function () {
 it('answers readiness with ok, and with a bare fail when a dependency breaks', function () {
     Storage::fake('files');
 
-    $this->get('/health/ready')->assertOk()->assertExactJson(['status' => 'ok']);
+    $this->get('/health/ready')->assertOk()->assertExactJson(['status' => 'ok', 'release' => null]);
 
     config(['platform.files.disk' => 'no-such-disk']);
 
-    $this->get('/health/ready')->assertStatus(503)->assertExactJson(['status' => 'fail']);
+    $this->get('/health/ready')->assertStatus(503)->assertExactJson(['status' => 'fail', 'release' => null]);
+});
+
+it('names the release being served', function () {
+    $commit = str_repeat('a1b2', 10);
+    $file = base_path('RELEASE.json');
+    file_put_contents($file, json_encode(['name' => 'engineering-template', 'commit' => $commit]));
+
+    try {
+        $this->get('/health/ready')->assertOk()->assertJsonPath('release', $commit);
+
+        // Anything but a full commit SHA is not repeated.
+        file_put_contents($file, json_encode(['commit' => '<script>']));
+        $this->get('/health/ready')->assertJsonPath('release', null);
+    } finally {
+        unlink($file);
+    }
 });

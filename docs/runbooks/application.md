@@ -8,8 +8,8 @@ user, from the current release directory.
 
 - **Meaning:** Prometheus cannot read `/metrics`.
 - **Check:** `systemctl status php8.5-fpm nginx`; `curl -sk https://127.0.0.1/health/ready -H "Host: HOST"`; `php artisan platform:health`; the last lines of `storage/logs`.
-- **Act:** restart the failing service; if a release just went out, roll back (`current` symlink to the previous release, reload PHP-FPM).
-- **Verify:** `/health/ready` returns `{"status":"ok"}`; the alert resolves within two scrapes.
+- **Act:** restart the failing service; if a release just went out, roll back: `sudo SMOKE_HOST=HOST scripts/deploy/rollback.sh` (the previous live release, from `/srv/APP/deploys.log`; it reloads PHP-FPM and smoke-tests; ADR-0032).
+- **Verify:** `/health/ready` returns `{"status":"ok","release":"<the expected commit>"}`; the alert resolves within two scrapes.
 
 ## QueueBacklog
 
@@ -52,3 +52,22 @@ user, from the current release directory.
 - **Check:** the `files` queue worker; ClamAV (`systemctl status clamav-daemon`, `clamdscan --version`); the log for `ScannerUnavailable`.
 - **Act:** restart the scanner or the worker; then `php artisan platform:files-sweep` queues stale scans again.
 - **Verify:** `platform_files{status="pending"}` falls; the oldest pending age returns to minutes.
+
+## Deploying a release (no alert; the procedure)
+
+- **Artifact:** `engineering-template-<sha>.tar.gz` and its `.sha256` from the
+  commit's `release` workflow run (ADR-0031), never a checkout.
+- **Staging:** the `deploy-staging` workflow, started by hand with the commit
+  SHA (an approver of the `staging` environment confirms).
+- **By hand on a server:** copy the artifact, its checksum, `scripts/deploy/`
+  and `scripts/release/verify.sh`; run
+  `sudo SMOKE_HOST=HOST scripts/deploy/deploy.sh engineering-template-<sha>.tar.gz`.
+  It verifies, unpacks to `/srv/APP/releases/<sha>`, migrates, caches,
+  switches `current`, reloads PHP-FPM, smoke-tests, and returns to the
+  previous release by itself if the smoke test fails (exit 1).
+- **Migrations:** forward only, and the previous release must keep working
+  with the new schema (add first, remove in a later release). A rollback
+  switches code, never the database; restoring data is
+  `docs/runbooks/data.md`.
+- **Verify:** `scripts/deploy/smoke.sh <sha>` passes; `deploys.log` ends
+  with `<sha> live`.
