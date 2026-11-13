@@ -142,9 +142,18 @@ jobs:
         run: |
           mkdir -p zap && chmod 777 zap
           cp .zap/rules.tsv zap/rules.tsv
+          curl -sk -o /dev/null -w 'https://localhost/ answers %{http_code}\n' https://localhost/
+          # 0 clean, 1 failures, 2 warnings, 3 ZAP itself failed: anything
+          # but 0 fails the job, with ZAP's last lines on the run.
+          status=0
           docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af \
-            zap-baseline.py -t https://localhost -c rules.tsv -r report.html -J report.json -j
+            zap-baseline.py -t https://localhost -c rules.tsv -r report.html -J report.json -j \
+            > zap/zap.log 2>&1 || status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -E 'WARN|FAIL|ERROR|Exception|rror' zap/zap.log | tail -n 25 | while IFS= read -r line; do echo "::error title=ZAP exit $status::$line"; done
+          fi
+          exit "$status"
 
       # Each alert as an annotation on the run, readable without
       # downloading the report.
