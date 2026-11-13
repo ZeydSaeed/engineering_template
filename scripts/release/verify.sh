@@ -35,7 +35,7 @@ for required in artisan RELEASE.json composer.lock vendor/autoload.php \
 done
 
 # Never in a release: secrets, local state, development tools and sources.
-forbidden='(^|/)\.env$|(^|/)\.git/|(^|/)node_modules/|^[^/]+/tests/|(^|/)\.tools/|\.sqlite$|(^|/)auth\.json$|^[^/]+/storage/logs/.+\.log$|^[^/]+/vendor/(phpunit|pestphp|larastan|phpstan|mockery|fakerphp)/'
+forbidden='(^|/)\.env$|(^|/)\.git/|(^|/)node_modules/|^[^/]+/tests/|(^|/)\.tools/|\.sqlite$|(^|/)auth\.json$|^[^/]+/storage/logs/.+\.log$|^[^/]+/vendor/(phpunit/phpunit|pestphp|larastan|phpstan/phpstan|mockery|fakerphp|deptrac|laravel/(pint|pail|sail|pao)|nunomaduro/collision)/'
 if hits=$(grep -E "$forbidden" <<< "$LIST"); then
     fail "forbidden entries: $(head -n 5 <<< "$hits" | tr '\n' ' ')"
 fi
