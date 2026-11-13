@@ -8,6 +8,7 @@ commands give the same answers as CI.
 | Workflow       | Runs on                                    | Jobs                                                                                                      |
 | -------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | `tests.yml`    | push to `main` and `phase-*`, pull request | SQLite suite and static checks; PostgreSQL 18 with Redis and ClamAV; browsers (Chromium, Firefox, WebKit) |
+| `release.yml`  | push to `main` and `phase-*`, on demand    | build the artifact twice and compare, verify, SBOM; on `main` a provenance attestation (ADR-0031)         |
 | `security.yml` | the same, plus weekly and on demand        | secrets (whole history), static analysis, dependency advisories, ZAP baseline                             |
 
 A change merges only when every job is green.

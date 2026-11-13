@@ -56,6 +56,7 @@ jobs:
             echo "::error title=Not reproducible::two builds of one commit differ"
             exit 1
           fi
+          echo "::notice title=Reproducible::two builds of $GITHUB_SHA: sha256 $first"
 
       - name: Verify
         run: bash scripts/release/verify.sh dist/*.tar.gz
