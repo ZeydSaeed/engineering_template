@@ -37,7 +37,11 @@ export default defineConfig({
     fullyParallel: false,
     workers: 1,
     forbidOnly: !!process.env.CI,
-    retries: 0,
+    // One retry on CI only, where a headless engine occasionally stalls
+    // (seen once in WebKit: a button never reported stable). A test that
+    // passes on retry is reported as flaky in the run summary, not hidden
+    // (ADR-0030). Locally, none.
+    retries: process.env.CI ? 1 : 0,
     // On CI, failures also become annotations on the run, readable
     // without downloading the log.
     reporter: process.env.CI ? [['github'], ['list']] : [['list']],
