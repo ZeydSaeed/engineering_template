@@ -33,10 +33,15 @@ if (typeof document !== 'undefined') {
 
 export function currentOpener(): HTMLElement | null {
     const active = document.activeElement;
+    const control = pressed?.isConnected ? pressed : null;
 
-    if (active instanceof HTMLElement && active !== document.body) {
-        return active;
+    // A click on a button inside a focusable area (a scrolling table) can
+    // focus the area instead: the button is the opener.
+    if (control && (active === document.body || active?.contains(control))) {
+        return control;
     }
 
-    return pressed?.isConnected ? pressed : null;
+    return active instanceof HTMLElement && active !== document.body
+        ? active
+        : control;
 }
