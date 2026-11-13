@@ -54,3 +54,74 @@ Gates
 - PostgreSQL: 323 passed, 2 skipped, twice in a row.
 - Chromium: 205/205 (role lists now include the approver).
 - Bundle: base 182.0 kB (budget 185).
+
+Batch 9.2: the interface and integration (2026-11-13)
+=====================================================
+
+What was added
+- Http: RequestPolicy, form requests (Precognition), RequestsTable
+  (server-side list with status and scope filters), RequestPresenter,
+  RequestController and AttachmentController (no base controller: the
+  module's Http layer may not depend on App\Http, deptrac), routes with
+  the UUID only and constrained to the UUID format.
+- Contracts\RequestsOverview for the dashboard widget; navigation and
+  notification links through the module's route helpers.
+- Pages in resources/js/modules/requests/pages (list, form, request with
+  files, history and the decision panel); the page resolver, the root
+  view's preload, config/inertia.php and the bundle budget know the
+  modules/<name>/pages/<page> rule.
+- Browser test data: an approver with an authenticator app and one
+  request waiting for a decision at a fixed UUID.
+
+Tests
+- Feature (RequestPagesTest, SQLite and PostgreSQL): who sees which
+  request (403 for others), 404 for a malformed or unknown UUID, no
+  internal id in the page, each field's check, Precognition checks one
+  field without saving, a stale form is refused, a repeated submission
+  click, an approver decides and the next is told it is already decided,
+  a person without the permission gets 403, files only on a draft and
+  only through their own request, the dashboard widget through the
+  contract.
+- Browser (requests.spec.ts, Arabic and English, three engines): draft
+  checked while typing, saved, a file added, submitted, nothing editable
+  afterwards; an approver signs in with password and authenticator code,
+  a rejection without a reason is not sent, rejection with a reason;
+  outbox relayed once; the requester follows the notification to the
+  request and reads the reason; axe on the list, the form with an error,
+  the submitted request, the decision panel and the rejection dialog.
+- pages.spec.ts covers /requests, /requests/new and the waiting request.
+
+Defects found and fixed during the batch
+- Pressing a form's button moved focus off the last field, which started
+  a live check, and the button was disabled while checking, so the press
+  was lost and nothing was saved (found by the browser test in the full
+  run: only the check requests reached the server). The same was latent
+  in the profile and security forms. Buttons are now disabled only while
+  sending; the server checks every field on saving.
+- Placeholders were replaced in order, so ":to" broke ":total" ("1tal" in
+  the pagination text). Placeholder names are now replaced whole; the
+  browser test reads the pagination text.
+- The history panel mixed in what a person with the same id had done;
+  requests use includeActions: false.
+- A malformed UUID reached PostgreSQL as a query error; routes now
+  constrain the format (404).
+- Factory requesters lacked a second factor, so the pages redirected to
+  setup; the factory gives them one.
+- In Playwright's Firefox, axe on the request right after it changed in
+  place crashed the test page every time (not the app; Chromium and
+  WebKit passed); the submitted request is checked on a fresh load. The
+  approver test may wait up to 30 s for a fresh authenticator code and
+  has its own 90 s limit.
+
+Gates
+- SQLite: 307 passed, 31 skipped; Pint, PHPStan 0, deptrac 0, vp check,
+  tsc.
+- PostgreSQL: 336 passed, 2 skipped.
+- Full browser run before the fixes above: Chromium 241/245, Firefox
+  239/245, WebKit 239/245; every failure was the dashboard widget count
+  (now five widgets) or the defects above. After the fixes, on each of
+  Chromium, Firefox and WebKit: requests.spec 8/8 (run twice), insights,
+  forms and data specs 28/28. The full matrix runs again in CI.
+- Bundle: base 184.3 kB (budget 185; 182.0 before the batch, the module's
+  route helpers in the navigation and notifications); request pages
+  +3.2, +29.5 and +17.3 kB (limit +35).

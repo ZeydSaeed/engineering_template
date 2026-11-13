@@ -36,7 +36,8 @@
         @fonts
 
         @viteReactRefresh
-        @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        {{-- The page's own chunk; module pages live at modules/<name>/pages (ADR-0033, as in app.tsx). --}}
+        @vite(['resources/css/app.css', 'resources/js/app.tsx', str_starts_with($page['component'], 'modules/') ? "resources/js/{$page['component']}.tsx" : "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
             <title>{{ config('app.name', 'Laravel') }}</title>
         </x-inertia::head>

@@ -46,7 +46,7 @@ export default function Profile({
                     }}
                     className="space-y-6"
                 >
-                    {({ processing, errors, validate, validating }) => (
+                    {({ processing, errors, validate }) => (
                         <>
                             <FormField
                                 name="name"
@@ -115,7 +115,7 @@ export default function Profile({
 
                             <div className="flex items-center gap-4">
                                 <Button
-                                    disabled={processing || validating}
+                                    disabled={processing}
                                     data-test="update-profile-button"
                                 >
                                     {t('Save')}

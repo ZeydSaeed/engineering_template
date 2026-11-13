@@ -12,8 +12,25 @@ import SettingsLayout from '@/layouts/settings/layout';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+// Pages of the application and of each module (ADR-0033): a module page is
+// named by its place, modules/NAME/pages/PAGE. Each page is its own chunk.
+const pages = import.meta.glob<{ default: unknown }>([
+    './pages/**/*.tsx',
+    './modules/*/pages/**/*.tsx',
+]);
+
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
+    resolve: async (name) => {
+        const path = name.startsWith('modules/') ? name : 'pages/' + name;
+        const load = pages['./' + path + '.tsx'];
+
+        if (!load) {
+            throw new Error(`Page not found: ${name}`);
+        }
+
+        return (await load()).default as never;
+    },
     layout: (name) => {
         switch (true) {
             case name === 'welcome':

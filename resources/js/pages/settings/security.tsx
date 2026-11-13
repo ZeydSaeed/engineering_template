@@ -61,7 +61,7 @@ export default function Security(props: Props) {
                     }}
                     className="space-y-6"
                 >
-                    {({ errors, processing, validate, validating }) => (
+                    {({ errors, processing, validate }) => (
                         <>
                             {/* Checked on submit only: a live check would
                                 let anyone with the session guess it. */}
@@ -117,7 +117,7 @@ export default function Security(props: Props) {
 
                             <div className="flex items-center gap-4">
                                 <Button
-                                    disabled={processing || validating}
+                                    disabled={processing}
                                     data-test="update-password-button"
                                 >
                                     {t('Save')}

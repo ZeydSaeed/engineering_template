@@ -1,5 +1,12 @@
 import { usePage } from '@inertiajs/react';
-import { BarChart3, Bell, LayoutGrid, Users } from 'lucide-react';
+import {
+    BarChart3,
+    Bell,
+    ClipboardList,
+    LayoutGrid,
+    Users,
+} from 'lucide-react';
+import RequestController from '@/actions/App/Modules/Requests/Http/RequestController';
 import { dashboard } from '@/routes';
 import { reports } from '@/routes/admin';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -18,6 +25,12 @@ export function useMainNavigation(): NavItem[] {
     const items: (NavItem & { permission?: string })[] = [
         { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
         { title: 'Notifications', href: notificationsIndex(), icon: Bell },
+        // Everyone may ask for something (Requests module, ADR-0033).
+        {
+            title: 'Requests',
+            href: RequestController.index(),
+            icon: ClipboardList,
+        },
         {
             title: 'Users',
             href: usersIndex(),

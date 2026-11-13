@@ -35,6 +35,7 @@ export default function ConfirmAction({
     form,
     tone = 'destructive',
     requirePassword = false,
+    fields = {},
     onSuccess,
 }: {
     trigger: ReactNode;
@@ -44,6 +45,8 @@ export default function ConfirmAction({
     form: RouteFormDefinition<'get' | 'post'>;
     tone?: 'destructive' | 'default';
     requirePassword?: boolean;
+    /** Values sent with the confirmation, as hidden fields. */
+    fields?: Record<string, string>;
     onSuccess?: () => void;
 }) {
     const { t } = useTranslations();
@@ -70,6 +73,30 @@ export default function ConfirmAction({
                 >
                     {({ processing, errors, resetAndClearErrors }) => (
                         <>
+                            {Object.entries(fields).map(([name, value]) => (
+                                <input
+                                    key={name}
+                                    type="hidden"
+                                    name={name}
+                                    value={value}
+                                />
+                            ))}
+                            {/* The server's answer about anything but the
+                                password (someone acted first, a rule
+                                refused it), announced in the dialog. */}
+                            {Object.entries(errors)
+                                .filter(([name]) => name !== 'password')
+                                .slice(0, 1)
+                                .map(([name, message]) => (
+                                    <p
+                                        key={name}
+                                        role="alert"
+                                        className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+                                        data-slot="confirm-action-error"
+                                    >
+                                        {message}
+                                    </p>
+                                ))}
                             {requirePassword && (
                                 <FormField
                                     name="password"

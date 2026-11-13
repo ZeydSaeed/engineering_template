@@ -19,11 +19,15 @@ export function useTranslations() {
     const { translations, locale, locales, direction } = usePage().props;
 
     const t = useCallback(
+        // Whole placeholder names only: replacing ":to" one at a time also
+        // hit ":total" ("1tal"; Phase 9). Unknown names stay as written.
         (key: string, replacements: Replacements = {}): string =>
-            Object.entries(replacements).reduce(
-                (text, [name, value]) =>
-                    text.replaceAll(`:${name}`, String(value)),
-                translations[key] ?? key,
+            (translations[key] ?? key).replace(
+                /:([A-Za-z_][A-Za-z0-9_]*)/g,
+                (placeholder, name: string) =>
+                    Object.hasOwn(replacements, name)
+                        ? String(replacements[name])
+                        : placeholder,
             ),
         [translations],
     );

@@ -68,13 +68,13 @@ describe('dashboard', function () {
         $this->actingAs(personWithRole())
             ->get('/dashboard')
             ->assertInertia(fn (Assert $page) => $page
-                ->where('layout.available', ['notifications', 'activity', 'documents'])
+                ->where('layout.available', ['notifications', 'activity', 'documents', 'requests'])
                 ->missing('widgets.people'));
 
         $this->actingAs(personWithRole(Role::Administrator))
             ->get('/dashboard')
             ->assertInertia(fn (Assert $page) => $page
-                ->where('layout.available', ['notifications', 'activity', 'documents', 'people'])
+                ->where('layout.available', ['notifications', 'activity', 'documents', 'requests', 'people'])
                 ->where('widgets.people.administrators', 1));
     });
 
@@ -90,7 +90,7 @@ describe('dashboard', function () {
             ->get('/dashboard')
             ->assertInertia(fn (Assert $page) => $page
                 // "people" is not theirs to see; new widgets go to the end.
-                ->where('layout.order', ['documents', 'activity', 'notifications'])
+                ->where('layout.order', ['documents', 'activity', 'notifications', 'requests'])
                 ->where('layout.hidden', ['activity'])
                 ->missing('widgets.activity')
                 ->has('widgets.documents'));

@@ -1,9 +1,12 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Bell, CheckCheck } from 'lucide-react';
 import NotificationController from '@/actions/App/Http/Controllers/NotificationController';
 import EmptyState from '@/components/empty-state';
 import Heading from '@/components/heading';
-import { notificationText } from '@/components/notification-text';
+import {
+    notificationHref,
+    notificationText,
+} from '@/components/notification-text';
 import type { NotificationData } from '@/components/notification-text';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from '@/hooks/use-translations';
@@ -87,7 +90,19 @@ export default function Notifications({ items }: { items: Item[] }) {
                                         !item.read && 'font-medium',
                                     )}
                                 >
-                                    {notificationText(t, item.data)}
+                                    {notificationHref(item.data) ? (
+                                        <Link
+                                            href={
+                                                notificationHref(item.data) ??
+                                                ''
+                                            }
+                                            className="underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                        >
+                                            {notificationText(t, item.data)}
+                                        </Link>
+                                    ) : (
+                                        notificationText(t, item.data)
+                                    )}
                                 </span>
                                 {item.created_at && (
                                     <time

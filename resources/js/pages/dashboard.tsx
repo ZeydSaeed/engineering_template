@@ -1,8 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Bell, FileText, History, Inbox, Users } from 'lucide-react';
+import {
+    Bell,
+    ClipboardList,
+    FileText,
+    History,
+    Inbox,
+    Users,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import DashboardController from '@/actions/App/Http/Controllers/DashboardController';
+import RequestController from '@/actions/App/Modules/Requests/Http/RequestController';
 import ActivityTimeline from '@/components/activity-timeline';
 import ColumnSettings from '@/components/data-table/column-settings';
 import EmptyState from '@/components/empty-state';
@@ -25,6 +33,10 @@ type Widgets = Partial<{
     }[];
     activity: TimelineEntry[];
     documents: Record<string, number>;
+    requests: {
+        mine: Record<string, number>;
+        to_decide: number | null;
+    };
     people: {
         total: number;
         without_second_factor: number;
@@ -103,6 +115,7 @@ export default function Dashboard({
         notifications: t('Notifications'),
         activity: t('Your activity'),
         documents: t('Your documents'),
+        requests: t('Requests'),
         people: t('People'),
     };
 
@@ -172,6 +185,40 @@ export default function Dashboard({
                             <Figure
                                 value={counts.rejected ?? 0}
                                 label={t('Rejected')}
+                            />
+                        </dl>
+                    </Widget>
+                );
+            }
+            case 'requests': {
+                const requests = widgets.requests;
+
+                return (
+                    <Widget
+                        key={key}
+                        id={key}
+                        title={titles[key]}
+                        icon={ClipboardList}
+                        link={{
+                            href: RequestController.index.url(),
+                            label: t('Requests'),
+                        }}
+                    >
+                        <dl className="grid grid-cols-3 gap-2">
+                            {requests?.to_decide !== null &&
+                                requests?.to_decide !== undefined && (
+                                    <Figure
+                                        value={requests.to_decide}
+                                        label={t('Waiting for my decision')}
+                                    />
+                                )}
+                            <Figure
+                                value={requests?.mine.submitted ?? 0}
+                                label={t('Mine waiting')}
+                            />
+                            <Figure
+                                value={requests?.mine.draft ?? 0}
+                                label={t('My drafts')}
                             />
                         </dl>
                     </Widget>

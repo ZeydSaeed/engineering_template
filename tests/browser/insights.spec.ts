@@ -73,7 +73,7 @@ for (const locale of ['ar', 'en']) {
             const widgets = page.locator(
                 '[data-slot="widgets"] > [data-widget]',
             );
-            await expect(widgets).toHaveCount(4);
+            await expect(widgets).toHaveCount(5);
 
             await page.locator('[data-test="customize-dashboard"]').click();
             await page.locator('#customize-dashboard-activity').click();
@@ -83,7 +83,7 @@ for (const locale of ['ar', 'en']) {
             );
 
             await page.reload();
-            await expect(widgets).toHaveCount(3);
+            await expect(widgets).toHaveCount(4);
 
             await page.locator('[data-test="customize-dashboard"]').click();
             await page.locator('#customize-dashboard-activity').click();

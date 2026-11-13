@@ -37,6 +37,9 @@ return [
 
         'paths' => [
             resource_path('js/pages'),
+            // Module pages, named by their place: modules/<name>/pages/<page>
+            // (ADR-0033; resolved the same way in resources/js/app.tsx).
+            resource_path('js'),
         ],
 
         'extensions' => [

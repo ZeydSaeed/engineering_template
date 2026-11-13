@@ -37,6 +37,10 @@ const userPages = [
     '/settings/documents',
     '/notifications',
     '/admin/reports',
+    // Requests module (ADR-0033); the last one is seeded (BrowserTestSeeder).
+    '/requests',
+    '/requests/new',
+    '/requests/01960000-0000-7000-8000-000000000001',
 ];
 
 async function open(

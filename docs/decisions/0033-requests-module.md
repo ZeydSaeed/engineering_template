@@ -1,7 +1,7 @@
 # ADR-0033: The Requests module, the golden path
 
-- Status: Accepted (batch 9.1: domain, data, actions; interface and
-  observability follow in 9.2 and 9.3)
+- Status: Accepted (9.1 domain, data, actions; 9.2 interface and
+  integration; observability follows in 9.3)
 - Date: 2026-11-14
 
 ## Context
@@ -64,6 +64,34 @@ someone else approves or rejects it, with an attachment.
 - `requests.view_all` and `requests.decide`; a new `approver` role with
   both; administrators get `requests.view_all` only (deciding is the
   approvers' work). Written in the permission matrix.
+
+**Interface and integration** (batch 9.2)
+
+- `Http`: `RequestPolicy` (view: requester or `requests.view_all`;
+  update and submit: requester of a draft; decide: `requests.decide`, not
+  one's own, submitted), thin controllers, form requests (live checks with
+  Precognition), `RequestsTable` (server-side, ADR-0026), a presenter
+  that sends plain values and what the viewer may do. Submitting and
+  deciding authorise viewing only and leave the rest to the action, which
+  answers precisely ("already decided") instead of a 403, and makes a
+  repeated click harmless.
+- Routes carry the UUID only, constrained to the UUID format (a malformed
+  one is a 404, not a database error); the internal id never reaches the
+  page.
+- Files: added by the requester while the request is a draft (so what is
+  decided on cannot change), through FileStore (scanned; served only when
+  checked, only through the request they belong to).
+- The history panel shows what was done _to_ the request
+  (`ActivityTimeline::for(..., includeActions: false)`); `true` would add
+  what a _person_ with the same id did.
+- Pages live in the module, `resources/js/modules/requests/pages`, named
+  `modules/requests/pages/<page>` for Inertia (`app.tsx`, the root view's
+  preload, `config/inertia.php` and the bundle budget all know the rule).
+- The core application knows the module only through `Contracts`
+  (`RequestsOverview`, for the dashboard widget) and its route helpers
+  (navigation, notification links).
+- Notifications (`request_submitted|approved|rejected`) read as sentences
+  in the reader's language and lead to the request.
 
 ## Consequences
 

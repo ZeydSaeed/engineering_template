@@ -60,8 +60,9 @@ console.log(
 );
 console.log('page'.padEnd(40), ' +JS kB', 'total', 'CSS kB');
 
+// Application pages and module pages (ADR-0033).
 const pages = Object.keys(manifest).filter((key) =>
-    /^resources\/js\/pages\/.+\.tsx$/.test(key),
+    /^resources\/js\/(pages|modules\/[^/]+\/pages)\/.+\.tsx$/.test(key),
 );
 
 for (const page of pages.sort()) {
@@ -72,7 +73,7 @@ for (const page of pages.sort()) {
     failed ||= over;
 
     console.log(
-        page.replace('resources/js/pages/', '').padEnd(40),
+        page.replace(/^resources\/js\/(pages\/)?/, '').padEnd(40),
         pageSize.js.toFixed(1).padStart(6),
         (baseSize.js + pageSize.js).toFixed(1).padStart(5),
         css.toFixed(1).padStart(6),
