@@ -138,6 +138,9 @@ jobs:
       - name: Serve like production
         run: bash scripts/ci/production-like.sh
 
+      - name: ZAP image
+        run: docker pull --quiet ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+
       - name: ZAP baseline
         run: |
           mkdir -p zap && chmod 777 zap
@@ -151,7 +154,7 @@ jobs:
             zap-baseline.py -t https://localhost -c rules.tsv -r report.html -J report.json -j \
             > zap/zap.log 2>&1 || status=$?
           if [ "$status" -ne 0 ]; then
-            tail -n 30 zap/zap.log | while IFS= read -r line; do echo "::error title=ZAP exit $status::$line"; done
+            grep -v -E 'Pull|Download|Verifying|Waiting|Digest|Status' zap/zap.log | tail -n 10 | while IFS= read -r line; do echo "::error title=ZAP exit $status::$line"; done
           fi
           exit "$status"
 

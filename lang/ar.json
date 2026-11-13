@@ -335,5 +335,7 @@
     "login using a recovery code": "تسجيل الدخول برمز استرداد",
     "login using an authentication code": "تسجيل الدخول برمز مصادقة",
     "or you can": "أو يمكنك",
-    "or, enter the code manually": "أو أدخل الرمز يدوياً"
+    "or, enter the code manually": "أو أدخل الرمز يدوياً",
+    "Invited as :role": "دُعي بدور: :role",
+    "Invited to the application": "دُعي إلى التطبيق"
 }

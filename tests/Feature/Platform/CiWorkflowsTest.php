@@ -65,8 +65,8 @@ it('never runs code from a fork with this repository\'s rights', function () {
         // Symfony Yaml reads the key `on` as the boolean true (YAML 1.1).
         $triggers = (array) ($workflow['on'] ?? $workflow[true] ?? []);
 
-        expect($triggers)->not->toHaveKey('pull_request_target', $name)
-            ->and($triggers)->not->toHaveKey('workflow_run', $name);
+        expect(array_key_exists('pull_request_target', $triggers))->toBeFalse("{$name}: pull_request_target")
+            ->and(array_key_exists('workflow_run', $triggers))->toBeFalse("{$name}: workflow_run");
     }
 });
 
