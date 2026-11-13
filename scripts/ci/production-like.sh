@@ -10,7 +10,7 @@
 # writes to /etc and /srv. It refuses to run anywhere else.
 #
 #   composer install --no-dev && npm ci && npm run build
-#   scripts/ci/production-like.sh            # then https://localhost
+#   scripts/ci/production-like.sh            # then https://template.test
 set -euo pipefail
 
 # A failure names its line and command, with the server logs, as
@@ -30,7 +30,9 @@ if [ "${CI:-}" != "true" ] || [ "${GITHUB_ACTIONS:-}" != "true" ]; then
 fi
 
 APP=template
-HOST=localhost
+# A dotted name: Java clients (ZAP) send no server name (SNI) for a bare
+# `localhost`, and the template rightly refuses TLS for unnamed hosts.
+HOST=${APP_HOST:-template.test}
 PHP=${PHP_VERSION:-8.5}
 SOURCE=$(pwd)
 BASE=/srv/$APP
@@ -49,6 +51,8 @@ sudo apt-get install -y -qq --no-install-recommends nginx "php$PHP-fpm" \
     "php$PHP-intl" "php$PHP-curl" "php$PHP-bcmath" "php$PHP-zip"
 PHP_CLI=/usr/bin/php$PHP
 "$PHP_CLI" -m | grep -qi pdo_sqlite
+
+grep -q " $HOST\$" /etc/hosts || echo "127.0.0.1 $HOST" | sudo tee -a /etc/hosts > /dev/null
 
 # The application's own user, owning its release and shared directories.
 id "$APP" > /dev/null 2>&1 || sudo useradd --system --no-create-home --shell /usr/sbin/nologin "$APP"
