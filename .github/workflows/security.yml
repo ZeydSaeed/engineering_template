@@ -170,7 +170,8 @@ jobs:
           for site in report.get('site', []):
               for alert in site.get('alerts', []):
                   uris = sorted({i.get('uri', '') for i in alert.get('instances', [])})[:3]
-                  print(f"::warning title=ZAP {alert.get('pluginid')}::{alert.get('name')} ({alert.get('riskdesc')}) {' '.join(uris)}")
+                  params = sorted({i.get('param', '') for i in alert.get('instances', [])} - {''})
+                  print(f"::warning title=ZAP {alert.get('pluginid')}::{alert.get('name')} ({alert.get('riskdesc')}) {' '.join(uris)} {' '.join(params)}")
           PY
 
       - name: Report

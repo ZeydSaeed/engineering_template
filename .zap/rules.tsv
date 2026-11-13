@@ -14,3 +14,13 @@
 # ZAP files every CSP finding under this id, so the rest of the policy is
 # held by SecurityHeadersTest (nonce scripts, no unsafe-eval, object-src none).
 10055	INFO	(CSP: style-src unsafe-inline)
+# ZAP posts the sign-in and reset forms; Laravel answers with a redirect
+# whose page (Symfony's) carries only the target address, nothing else.
+10044	INFO	(Big Redirect Detected (Potential Sensitive Information Leak))
+# Informational: ZAP found the session cookie (HttpOnly, Secure, __Host-).
+10112	INFO	(Session Management Response Identified)
+# Informational: guest pages are no-cache, private; signed-in pages are
+# no-store (SecurityHeaders); built assets are immutable by content hash.
+10015	INFO	(Re-examine Cache-control Directives)
+# The same pages, seen from the cache's side: not stored, on purpose.
+10049	INFO	(Non-Storable Content)

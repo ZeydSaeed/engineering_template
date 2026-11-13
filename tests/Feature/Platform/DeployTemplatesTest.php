@@ -53,13 +53,27 @@ it('runs only the front controller and keeps probes local', function () {
         ->toContain('server_tokens off;');
 });
 
-it('gives the built assets Nginx serves the headers PHP gives pages', function () {
+it('gives the files Nginx serves the headers PHP gives pages', function () {
     $nginx = (string) file_get_contents(base_path('deploy/nginx/app.conf'));
-    preg_match('#location /build/ \{(.*?)\n    \}#s', $nginx, $block);
+    $hsts = 'max-age='.config('platform.security.hsts_max_age').'; includeSubDomains';
 
-    expect($block[1] ?? '')->toContain('X-Content-Type-Options "nosniff" always')
-        ->toContain('Cross-Origin-Resource-Policy "same-origin" always')
-        ->toContain('Permissions-Policy');
+    preg_match_all('#\n    location (/build/ |~ \^/\(favicon[^{]+)\{(.*?)\n    \}#s', $nginx, $blocks);
+
+    expect($blocks[2])->toHaveCount(2);
+
+    foreach ($blocks[2] as $block) {
+        expect($block)->toContain('X-Content-Type-Options "nosniff" always')
+            ->toContain('Cross-Origin-Resource-Policy "same-origin" always')
+            ->toContain('Permissions-Policy')
+            ->toContain("Strict-Transport-Security \"{$hsts}\" always");
+    }
+
+    // Every file at the top of public/ besides index.php is covered.
+    foreach (glob(public_path('*.*')) ?: [] as $file) {
+        if (basename($file) !== 'index.php') {
+            expect(str_contains($nginx, str_replace('.', '\.', basename($file))))->toBeTrue(basename($file).' is not in the Nginx static files location');
+        }
+    }
 });
 
 it('uses only directives the Nginx of the supported Ubuntu LTS knows', function () {
