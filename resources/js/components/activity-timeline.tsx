@@ -12,6 +12,8 @@ export function roleLabel(t: Translate, role: string): string {
             return t('Administrator');
         case 'auditor':
             return t('Auditor');
+        case 'approver':
+            return t('Approver');
         default:
             return role;
     }
@@ -57,6 +59,16 @@ function actionLabel(t: Translate, entry: TimelineEntry): string {
             return t('File uploaded');
         case 'file.rejected':
             return t('File rejected');
+        case 'request.created':
+            return t('Request created');
+        case 'request.updated':
+            return t('Request changed');
+        case 'request.submitted':
+            return t('Request submitted');
+        case 'request.approved':
+            return t('Request approved');
+        case 'request.rejected':
+            return t('Request rejected');
         case 'user.invited':
             return role
                 ? t('Invited as :role', { role })

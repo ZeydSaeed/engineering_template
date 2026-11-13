@@ -13,12 +13,15 @@ enum Role: string implements GrantsPermissions
 {
     case Administrator = 'administrator';
     case Auditor = 'auditor';
+    case Approver = 'approver';
 
     public function permissions(): array
     {
         return match ($this) {
-            self::Administrator => [Permission::RolesManage, Permission::AuditView],
+            // Administrators see requests; deciding is the approvers' job.
+            self::Administrator => [Permission::RolesManage, Permission::AuditView, Permission::RequestsViewAll],
             self::Auditor => [Permission::AuditView],
+            self::Approver => [Permission::RequestsViewAll, Permission::RequestsDecide],
         };
     }
 }

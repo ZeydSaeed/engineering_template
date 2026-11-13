@@ -11,6 +11,10 @@
 
 use App\Access\Role;
 use App\Models\User;
+use App\Modules\Requests\Application\Actions\DecideRequest;
+use App\Modules\Requests\Application\Actions\SubmitRequest;
+use App\Modules\Requests\Domain\Decision;
+use App\Modules\Requests\Models\ApprovalRequest;
 use App\Platform\Access\AssignRole;
 use App\Platform\Access\RevokeRole;
 use App\Platform\Outbox\OutboxRelay;
@@ -32,7 +36,8 @@ if (! $app->environment('testing') || config('database.default') !== 'pgsql' || 
     exit(2);
 }
 
-config(['platform.outbox.handlers' => ['test.counted' => CountingOutboxJob::class]]);
+// Added to the application's handlers (modules register their own).
+config(['platform.outbox.handlers' => [...(array) config('platform.outbox.handlers'), 'test.counted' => CountingOutboxJob::class]]);
 
 $scenario = $argv[1];
 $startAt = (float) $argv[2];
@@ -73,6 +78,23 @@ try {
         })(),
         'work-outbox-queue' => (function (): array {
             Artisan::call('queue:work', ['connection' => 'database', '--queue' => 'outbox', '--stop-when-empty' => true]);
+
+            return ['ok' => true];
+        })(),
+        // args: approver id, request id, approve|reject
+        'decide-request' => (function () use ($app, $args): array {
+            $app->make(DecideRequest::class)->handle(
+                User::findOrFail((int) $args[0]),
+                ApprovalRequest::query()->findOrFail((int) $args[1]),
+                Decision::from($args[2]),
+                $args[2] === 'reject' ? 'Not now.' : null,
+            );
+
+            return ['ok' => true];
+        })(),
+        // args: requester id, request id
+        'submit-request' => (function () use ($app, $args): array {
+            $app->make(SubmitRequest::class)->handle(User::findOrFail((int) $args[0]), ApprovalRequest::query()->findOrFail((int) $args[1]));
 
             return ['ok' => true];
         })(),

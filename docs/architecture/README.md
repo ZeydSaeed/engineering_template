@@ -7,7 +7,8 @@ parts are marked **Planned**.
 
 A modular monolith (ADR-0001): one Laravel application, one deployment, one
 database. Shared capabilities live in `app/Platform`; each business area is a
-module in `app/Modules/<Name>` (none exist yet, **Planned** from Phase 9).
+module in `app/Modules/<Name>`. The first, `Requests` (ADR-0033), is the worked
+example of every rule below.
 
 ```
 app/

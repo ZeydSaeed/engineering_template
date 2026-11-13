@@ -124,6 +124,8 @@ describe('reports', function () {
                 ->where('roles', [
                     ['role' => 'administrator', 'count' => 1],
                     ['role' => 'auditor', 'count' => 1],
+                    // Every role is listed, held or not (Requests module, ADR-0033).
+                    ['role' => 'approver', 'count' => 0],
                     ['role' => 'none', 'count' => 1],
                 ]));
     });

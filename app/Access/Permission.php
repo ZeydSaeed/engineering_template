@@ -11,4 +11,8 @@ enum Permission: string
 {
     case RolesManage = 'roles.manage';
     case AuditView = 'audit.view';
+
+    // Requests module (ADR-0033): see everyone's requests; decide on them.
+    case RequestsViewAll = 'requests.view_all';
+    case RequestsDecide = 'requests.decide';
 }

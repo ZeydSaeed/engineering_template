@@ -39,7 +39,7 @@ describe('access', function () {
     it('offers the permissions a person has to the interface', function () {
         $this->actingAs(userWithRole(Role::Administrator))
             ->get('/dashboard')
-            ->assertInertia(fn (Assert $page) => $page->where('auth.permissions', ['audit.view', 'roles.manage']));
+            ->assertInertia(fn (Assert $page) => $page->where('auth.permissions', ['audit.view', 'requests.view_all', 'roles.manage']));
     });
 });
 

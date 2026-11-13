@@ -1,0 +1,56 @@
+Phase 9 verification - Golden path: the Requests module (ADR-0033)
+Machine: local development PC (Windows 10, PHP 8.5.12, PostgreSQL 18,
+Node 24, Playwright Chromium) and GitHub-hosted runners.
+
+## Batch 9.1 (2026-11-14): domain, data and actions
+
+Implemented
+- app/Modules/Requests: Domain (RequestStatus, Decision), Models
+  (ApprovalRequest), Application (CreateRequest, UpdateDraft,
+  SubmitRequest, DecideRequest; NotifyApprovers, NotifyRequester;
+  RequestNotification), Database (migration, factory),
+  RequestsServiceProvider (migrations, morph alias, outbox handlers).
+- Access: requests.view_all, requests.decide; role approver; the
+  administrator gets requests.view_all; permission matrix updated.
+- Timeline labels and Arabic for every new audit action and the role.
+
+Tests
+- Unit: the state machine allows exactly draft->submitted,
+  submitted->approved, submitted->rejected.
+- Feature (SQLite and PostgreSQL): creation (UUIDv7, audit), drafts
+  (requester only, optimistic lock refuses a stale form, no-op records
+  nothing, non-draft refused), submission (requester only, idempotent,
+  one outbox message), approver notifications (requester excluded, once
+  despite a duplicate delivery), decisions (permission, own request,
+  reason to reject, draft refused, idempotent repeat, second approver
+  told it is decided, role removed just before -> refused), requester
+  notified of the rejection with its reason, audit chain intact.
+- Constraints (PostgreSQL): nine rows written past the actions, each
+  refused by its named CHECK constraint; a requester with requests cannot
+  be deleted (RESTRICT).
+- Concurrency (PostgreSQL, real processes): two approvers, one approving
+  and one rejecting at the same moment, five rounds: exactly one decision,
+  one audit record and one outbox message each round, the other told
+  "This request has already been decided."; four simultaneous submissions:
+  one submission, one audit record, one message.
+- PostgresConventionsTest covers the new table (timestamptz, indexed
+  foreign keys).
+
+Defects found and fixed during the batch
+- The rejection-reason CHECK let a NULL reason through (a CHECK passes on
+  NULL; length(btrim(NULL)) > 0 is NULL). Found by the constraint test;
+  NULL is now named, and two more rules were tightened the same way
+  (decider and decision time together; decided after submitted).
+- Concurrency tests replaced the outbox handler list with their own, which
+  hid the module's handlers; they now add to it.
+- A six-way submission race once exceeded the owner role's CONNECTION
+  LIMIT 10 in the full suite ("too many connections for role"): the limit
+  working. The race uses four processes; the assertion now prints any
+  worker's error.
+
+Gates
+- SQLite: 294 passed, 31 skipped; PHPStan 0; deptrac 0; architecture and
+  module boundary tests pass with the first real module.
+- PostgreSQL: 323 passed, 2 skipped, twice in a row.
+- Chromium: 205/205 (role lists now include the approver).
+- Bundle: base 182.0 kB (budget 185).

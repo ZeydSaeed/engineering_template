@@ -11,8 +11,9 @@ use App\Access\Role;
 
 it('grants exactly the permissions written here', function () {
     $matrix = [
-        'administrator' => ['roles.manage', 'audit.view'],
+        'administrator' => ['roles.manage', 'audit.view', 'requests.view_all'],
         'auditor' => ['audit.view'],
+        'approver' => ['requests.view_all', 'requests.decide'],
     ];
 
     $actual = [];

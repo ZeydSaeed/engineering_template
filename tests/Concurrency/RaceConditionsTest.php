@@ -2,6 +2,10 @@
 
 use App\Access\Role;
 use App\Models\User;
+use App\Modules\Requests\Application\Actions\DecideRequest;
+use App\Modules\Requests\Application\Actions\SubmitRequest;
+use App\Modules\Requests\Domain\RequestStatus;
+use App\Modules\Requests\Models\ApprovalRequest;
 use App\Platform\Access\RoleAssignment;
 use App\Platform\Audit\AuditEvent;
 use App\Platform\Audit\VerifyAuditChain;
@@ -27,7 +31,8 @@ beforeEach(function () {
         $this->markTestSkipped('Concurrency tests need PostgreSQL (composer test:pgsql).');
     }
 
-    config(['platform.outbox.handlers' => ['test.counted' => CountingOutboxJob::class]]);
+    // Added to the application's handlers (modules register their own).
+    config(['platform.outbox.handlers' => [...(array) config('platform.outbox.handlers'), 'test.counted' => CountingOutboxJob::class]]);
 });
 
 function newAdministrator(): User
@@ -114,3 +119,50 @@ it('keeps both of two workspace choices saved at the same moment', function () {
             ->toEqual(['density' => 'compact', 'shortcuts' => false], "round {$round}");
     }
 });
+
+it('lets exactly one of two approvers decide a request when both act at once', function () {
+    foreach (range(1, 5) as $round) {
+        $approvers = [newApprover(), newApprover()];
+        $request = ApprovalRequest::factory()->submitted()->create();
+
+        // One approves, the other rejects, at the same moment.
+        $results = Parallel::run('decide-request', [
+            [$approvers[0]->id, $request->id, 'approve'],
+            [$approvers[1]->id, $request->id, 'reject'],
+        ]);
+        $succeeded = array_values(array_filter($results, fn (array $result): bool => $result['ok']));
+        $refused = array_values(array_filter($results, fn (array $result): bool => ! $result['ok']));
+
+        expect($succeeded)->toHaveCount(1, "round {$round}")
+            ->and($refused[0]['error'])->toBe(DomainRuleViolation::class)
+            ->and($refused[0]['message'])->toBe('This request has already been decided.')
+            ->and($request->fresh()?->status)->toBeIn([RequestStatus::Approved, RequestStatus::Rejected])
+            ->and(AuditEvent::query()->where('subject_id', (string) $request->id)->whereIn('action', ['request.approved', 'request.rejected'])->count())->toBe(1, "round {$round}")
+            ->and(OutboxMessage::query()->where('topic', DecideRequest::TOPIC)->where('payload->request', $request->uuid)->count())->toBe(1, "round {$round}");
+    }
+
+    expect(app(VerifyAuditChain::class)->run()['broken_at'])->toBeNull();
+});
+
+it('submits a request once when four submissions race', function () {
+    $request = ApprovalRequest::factory()->create();
+
+    // Four, not six: with this process and the previous test's workers still
+    // closing, six could pass the owner role's CONNECTION LIMIT 10 (seen
+    // once: "too many connections for role"), which is the limit working.
+    $results = Parallel::run('submit-request', array_fill(0, 4, [$request->requester_id, $request->id]));
+
+    // Every attempt succeeds (the late ones change nothing); a failure shows its error.
+    expect(array_values(array_filter($results, fn (array $result): bool => ! $result['ok'])))->toBe([])
+        ->and($request->fresh()?->status)->toBe(RequestStatus::Submitted)
+        ->and(AuditEvent::query()->where('subject_id', (string) $request->id)->where('action', 'request.submitted')->count())->toBe(1)
+        ->and(OutboxMessage::query()->where('topic', SubmitRequest::TOPIC)->count())->toBe(1);
+});
+
+function newApprover(): User
+{
+    $user = User::factory()->create();
+    RoleAssignment::query()->forceCreate(['user_id' => $user->id, 'role' => Role::Approver->value]);
+
+    return $user;
+}

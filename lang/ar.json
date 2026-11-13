@@ -337,5 +337,17 @@
     "or you can": "أو يمكنك",
     "or, enter the code manually": "أو أدخل الرمز يدوياً",
     "Invited as :role": "دُعي بدور: :role",
-    "Invited to the application": "دُعي إلى التطبيق"
+    "Invited to the application": "دُعي إلى التطبيق",
+    "Approver": "معتمِد",
+    "Request created": "أُنشئ طلب",
+    "Request changed": "عُدّل الطلب",
+    "Request submitted": "قُدّم الطلب",
+    "Request approved": "اعتُمد الطلب",
+    "Request rejected": "رُفض الطلب",
+    "Only a draft can be changed.": "لا يمكن تعديل إلا المسودة.",
+    "Someone else changed this request after you opened it. Reload to see their change.": "عدّل شخص آخر هذا الطلب بعد أن فتحته. أعد التحميل لترى تعديله.",
+    "This request has already been decided.": "صدر قرار في هذا الطلب من قبل.",
+    "Say why the request is rejected.": "اذكر سبب رفض الطلب.",
+    "You cannot decide your own request.": "لا يمكنك البت في طلبك أنت.",
+    "Only a submitted request can be decided.": "لا يُبت إلا في طلب مقدَّم."
 }
