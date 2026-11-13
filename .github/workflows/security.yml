@@ -100,30 +100,13 @@ jobs:
           fail-on-severity: low
           deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, SSPL-1.0
 
-  # A passive scan of what a visitor reaches without signing in, with the
-  # production security settings (headers, CSP, cookies). Every alert fails
-  # the job unless .zap/rules.tsv ignores it with a reason.
+  # A passive scan of what a visitor reaches without signing in, served the
+  # way a server serves it: the deploy/ templates for Nginx and PHP-FPM,
+  # HTTPS, APP_ENV=production (scripts/ci/production-like.sh). Every alert
+  # fails the job unless .zap/rules.tsv lists it with a reason.
   zap:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    env:
-      APP_ENV: scan
-      APP_DEBUG: 'false'
-      APP_URL: http://127.0.0.1:8124
-      DB_CONNECTION: sqlite
-      DB_DATABASE: database/scan.sqlite
-      SESSION_DRIVER: file
-      SESSION_ENCRYPT: 'true'
-      SESSION_SECURE_COOKIE: 'true'
-      CACHE_STORE: array
-      QUEUE_CONNECTION: sync
-      MAIL_MAILER: array
-      LOG_CHANNEL: stderr
-      PLATFORM_HSTS: 'true'
-      PLATFORM_CSP: 'true'
-      AUDIT_HMAC_KEY: zap-scan-only-audit-key-not-a-secret-0123456789
-      PHP_CLI_SERVER_WORKERS: 4
+    timeout-minutes: 25
 
     steps:
       - name: Checkout code
@@ -143,18 +126,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install and serve
+      - name: Build
         run: |
           composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
           cp .env.example .env
           php artisan key:generate
           npm ci
           npm run build
-          touch database/scan.sqlite
-          php artisan migrate --force
-          php artisan serve --host=127.0.0.1 --port=8124 --no-reload > storage/logs/serve.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8124/up > /dev/null && break; sleep 1; done
-          curl -sf http://127.0.0.1:8124/up > /dev/null
+          rm .env
+
+      - name: Serve like production
+        run: bash scripts/ci/production-like.sh
 
       - name: ZAP baseline
         run: |
@@ -162,7 +144,7 @@ jobs:
           cp .zap/rules.tsv zap/rules.tsv
           docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af \
-            zap-baseline.py -t http://127.0.0.1:8124 -c rules.tsv -r report.html -J report.json -j
+            zap-baseline.py -t https://localhost -c rules.tsv -r report.html -J report.json -j
 
       # Each alert as an annotation on the run, readable without
       # downloading the report.
@@ -187,5 +169,4 @@ jobs:
           path: |
             zap/report.html
             zap/report.json
-            storage/logs/serve.log
           retention-days: 14

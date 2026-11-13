@@ -1,3 +1,16 @@
 # ZAP baseline rules (zap-baseline.py -c). Every alert fails the scan
 # unless listed here as IGNORE or INFO, with the reason on the line above.
 # Format: rule id <TAB> IGNORE|INFO|WARN|FAIL <TAB> (name)
+
+# Informational: ZAP noting a JavaScript application, nothing to fix.
+10109	INFO	(Modern Web Application)
+# localStorage holds only the theme choice (light, dark, system).
+120000	INFO	(Information Disclosure - Information in Browser localStorage)
+# XSRF-TOKEN is read by the page to send it back (Laravel CSRF, ADR-0016);
+# the session cookie is HttpOnly. Re-check if this alert names another cookie.
+10010	INFO	(Cookie No HttpOnly Flag)
+# style-src allows 'unsafe-inline' for the UI library's inline styles:
+# accepted in ADR-0016 (scripts need a nonce); a residual risk to remove.
+# ZAP files every CSP finding under this id, so the rest of the policy is
+# held by SecurityHeadersTest (nonce scripts, no unsafe-eval, object-src none).
+10055	INFO	(CSP: style-src unsafe-inline)

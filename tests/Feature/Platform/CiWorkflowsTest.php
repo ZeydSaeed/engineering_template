@@ -94,3 +94,21 @@ it('gives every ignored secret finding a reason', function () {
             ->and($lines[$index - 1] ?? '')->toStartWith('#', "no reason above {$line}");
     }
 });
+
+it('gives every relaxed ZAP rule a reason', function () {
+    $lines = file(base_path('.zap/rules.tsv'), FILE_IGNORE_NEW_LINES) ?: [];
+    $rules = 0;
+
+    foreach ($lines as $index => $line) {
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        $rules++;
+        expect($line)->toMatch('/^\d+\t(IGNORE|INFO|WARN|FAIL)\t\(.+\)$/')
+            ->and($lines[$index - 1] ?? '')->toStartWith('#', "no reason above {$line}");
+    }
+
+    expect($rules)->toBeGreaterThan(0);
+});
+
