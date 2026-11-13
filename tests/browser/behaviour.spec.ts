@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { pageReady } from './lib/ready';
 
 /*
 | Behaviour that axe cannot see (ADR-0025): dialogs and drawers keep focus,
@@ -15,7 +16,7 @@ async function inLocale(page: Page, locale: string, path: string) {
         .addCookies([{ name: 'locale', value: locale, url: baseURL }]);
     await page.setViewportSize({ width: 1366, height: 900 });
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await pageReady(page);
 }
 
 async function focusIsInside(page: Page, selector: string): Promise<boolean> {

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { pageReady } from './lib/ready';
 
 /*
 | The user list (ADR-0026) as a person uses it, in Arabic and English:
@@ -17,7 +18,7 @@ async function openUsers(page: Page, locale: string, query = '') {
         .addCookies([{ name: 'locale', value: locale, url: baseURL }]);
     await page.setViewportSize({ width: 1366, height: 900 });
     await page.goto(`/admin/users${query}`);
-    await page.waitForLoadState('networkidle');
+    await pageReady(page);
 }
 
 async function axe(page: Page, label: string) {
@@ -216,7 +217,12 @@ for (const locale of ['ar', 'en']) {
             await axe(page, 'with the details panel');
 
             await page.keyboard.press('Escape');
-            await expect(drawer).toBeHidden();
+            // Waited for inside the page: in Playwright's Firefox, polling
+            // the panel from outside while it unmounts, after axe has run,
+            // crashes the test browser's page (not the app; ADR-0030).
+            await page.waitForFunction(
+                () => !document.querySelector('[data-slot="drawer"]'),
+            );
             await expect(page).not.toHaveURL(/user=/);
             await expect(opener).toBeFocused();
         });

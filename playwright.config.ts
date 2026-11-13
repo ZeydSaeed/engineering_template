@@ -50,7 +50,30 @@ export default defineConfig({
         // half-faded mid-animation, on fast and slow machines alike.
         contextOptions: { reducedMotion: 'reduce' },
     },
-    projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+    // One engine per run (npm run test:browser -- --project=firefox): the
+    // tests change data, and each run starts from a fresh database. CI runs
+    // all three (Phase 8, ADR-0030).
+    projects: [
+        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        {
+            name: 'firefox',
+            use: {
+                ...devices['Desktop Firefox'],
+                // `php artisan serve` answers one connection at a time; a
+                // speculative connection Firefox opens and never uses would
+                // hold every other request.
+                launchOptions: {
+                    firefoxUserPrefs: {
+                        'network.http.speculative-parallel-limit': 0,
+                        'network.predictor.enabled': false,
+                        'network.prefetch-next': false,
+                        'network.dns.disablePrefetch': true,
+                    },
+                },
+            },
+        },
+        { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    ],
     webServer: {
         command: `php artisan serve --host=127.0.0.1 --port=${port} --no-reload`,
         url: `http://127.0.0.1:${port}/up`,

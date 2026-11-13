@@ -1,0 +1,176 @@
+name: security
+
+# Secrets, static analysis, dependency advisories and a passive web scan
+# (Phase 8, ADR-0030, docs/standards/ci.md). Weekly as well, because new
+# advisories appear without any change here.
+
+on:
+  push:
+    branches:
+      - main
+      - 'phase-*'
+  pull_request:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Every commit, not only the last: the repository is public.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Gitleaks (checksum verified)
+        env:
+          VERSION: 8.30.1
+          SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfLo gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --no-banner --verbose .
+
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Semgrep
+        run: |
+          python3 -m venv /tmp/semgrep
+          /tmp/semgrep/bin/pip install --quiet semgrep==1.182.1
+          /tmp/semgrep/bin/semgrep scan --metrics=off --error \
+            --config p/php --config p/typescript --config p/react \
+            --config p/javascript --config p/secrets \
+            app config routes resources/js bootstrap database
+
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Composer advisories
+        run: composer audit --locked
+
+      - name: npm advisories
+        run: npm audit
+
+      # New or changed dependencies in a pull request: known advisories and
+      # licences that do not fit a reusable template.
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, SSPL-1.0
+
+  # A passive scan of what a visitor reaches without signing in, with the
+  # production security settings (headers, CSP, cookies). Every alert fails
+  # the job unless .zap/rules.tsv ignores it with a reason.
+  zap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      APP_ENV: scan
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8124
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/scan.sqlite
+      SESSION_DRIVER: file
+      SESSION_ENCRYPT: 'true'
+      SESSION_SECURE_COOKIE: 'true'
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      LOG_CHANNEL: stderr
+      PLATFORM_HSTS: 'true'
+      PLATFORM_CSP: 'true'
+      AUDIT_HMAC_KEY: zap-scan-only-audit-key-not-a-secret-0123456789
+      PHP_CLI_SERVER_WORKERS: 4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Install and serve
+        run: |
+          composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
+          cp .env.example .env
+          php artisan key:generate
+          npm ci
+          npm run build
+          touch database/scan.sqlite
+          php artisan migrate --force
+          php artisan serve --host=127.0.0.1 --port=8124 --no-reload > storage/logs/serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8124/up > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8124/up > /dev/null
+
+      - name: ZAP baseline
+        run: |
+          mkdir -p zap && chmod 777 zap
+          cp .zap/rules.tsv zap/rules.tsv
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af \
+            zap-baseline.py -t http://127.0.0.1:8124 -c rules.tsv -r report.html -J report.json -j
+
+      - name: Report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-report
+          path: |
+            zap/report.html
+            zap/report.json
+            storage/logs/serve.log
+          retention-days: 14

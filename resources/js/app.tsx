@@ -3,6 +3,9 @@ import { DirectionProvider } from '@radix-ui/react-direction';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+// Listens from the start: dialogs in lazy chunks need the click that
+// opened them (lib/opener.ts).
+import '@/lib/opener';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';

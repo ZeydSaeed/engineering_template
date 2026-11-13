@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { pageReady } from './lib/ready';
 
 /*
 | Workspace (ADR-0028): global search (#5), keyboard shortcuts (#17),
@@ -15,7 +16,7 @@ async function open(page: Page, locale: string, path: string) {
         .addCookies([{ name: 'locale', value: locale, url: baseURL }]);
     await page.setViewportSize({ width: 1366, height: 900 });
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    await pageReady(page);
 }
 
 /** Sets the shortcut preference and waits until the server saved it. */

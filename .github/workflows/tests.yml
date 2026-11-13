@@ -11,9 +11,16 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch replaces a run still going; main keeps
+# every run.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -44,6 +51,7 @@ jobs:
   # append-only tests run too.
   postgres:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -147,9 +155,17 @@ jobs:
         run: composer test:pgsql
 
   # Every page in Arabic/RTL and English/LTR, light and dark, phone and
-  # desktop: axe (WCAG 2.2 AA), layout and the bundle budget (ADR-0024).
+  # desktop: axe (WCAG 2.2 AA), layout and the bundle budget (ADR-0024),
+  # in Chromium, Firefox and WebKit (ADR-0030).
   browser:
+    name: browser (${{ matrix.browser }})
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
 
     steps:
       - name: Checkout code
@@ -175,21 +191,23 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           npm ci
-          npx playwright install --with-deps chromium-headless-shell
+          # Sign-in for every run uses Chromium (global-setup.ts).
+          npx playwright install --with-deps chromium-headless-shell ${{ matrix.browser != 'chromium' && matrix.browser || '' }}
 
       - name: Build
         run: npm run build
 
       - name: Bundle budget
+        if: matrix.browser == 'chromium'
         run: npm run budget
 
       - name: Browser tests
-        run: npm run test:browser
+        run: npx playwright test --project=${{ matrix.browser }}
 
       - name: Screenshots
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.browser }}
           path: storage/framework/screenshots
           retention-days: 14
