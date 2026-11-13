@@ -1,0 +1,58 @@
+﻿
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+    sign_in_failures
+    ✓ 'count==0' count=0
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1184    6.300937/s
+    checks_succeeded...: 100.00% 1184 out of 1184
+    checks_failed......: 0.00%   0 out of 1184
+
+    ✓ GET /login 200
+    ✓ still signed in
+    ✓ GET /requests 200
+    ✓ GET /requests/:uuid 200
+    ✓ GET /requests/new 200
+    ✓ draft saved
+    ✓ decision answered
+    ✓ request submitted
+    ✓ GET /dashboard 200
+
+    CUSTOM
+    requests_already_decided.......: 14     0.074504/s
+    requests_created...............: 113    0.601356/s
+    requests_decided...............: 32     0.170296/s
+    requests_submitted.............: 113    0.601356/s
+    server_app_ms..................: avg=135.62ms min=49.5ms   med=110.94ms max=974.8ms p(90)=235.29ms p(95)=296.04ms
+    server_db_ms...................: avg=338.86ms min=68ms     med=266.5ms  max=2.03s   p(90)=613.42ms p(95)=764.19ms
+    server_db_queries..............: avg=9.253213 min=3        med=10       max=14      p(90)=12       p(95)=12      
+    sign_in_failures...............: 0      0/s
+
+    HTTP
+    http_req_duration..............: avg=1.32s    min=152.95ms med=988.56ms max=5.68s   p(90)=2.72s    p(95)=3.43s   
+      { expected_response:true }...: avg=1.32s    min=152.95ms med=988.56ms max=5.68s   p(90)=2.72s    p(95)=3.43s   
+    http_req_failed................: 0.00%  0 out of 1100
+    http_reqs......................: 1100   5.853912/s
+
+    EXECUTION
+    iteration_duration.............: avg=24.8s    min=9.85s    med=24.42s   max=38.92s  p(90)=33.9s    p(95)=35.44s  
+    iterations.....................: 159    0.846156/s
+    vus............................: 1      min=1         max=25
+    vus_max........................: 25     min=25        max=25
+
+    NETWORK
+    data_received..................: 66 MB  353 kB/s
+    data_sent......................: 1.2 MB 6.5 kB/s
+
+
+

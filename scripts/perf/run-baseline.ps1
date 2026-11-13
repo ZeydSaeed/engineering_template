@@ -4,6 +4,10 @@
 # samples and the top statements from pg_stat_statements.
 #
 #   .\scripts\perf\run-baseline.ps1 -Name normal-50 -VisitorVus 30 -StaffVus 20 -Hold 2m
+#   .\scripts\perf\run-baseline.ps1 -Script requests -Phase phase-9 -Name requests-25 -StaffVus 20 -ApproverVus 5
+#
+# -Script picks tests\load\<script>.js (baseline: visitors and staff;
+# requests: requesters and approvers, ADR-0033); -Phase the evidence folder.
 #
 # Local only: k6 refuses non-local hosts, and statistics are read with the
 # template's own owner role.
@@ -12,12 +16,15 @@ param(
     [int]$VisitorVus = 30,
     [int]$StaffVus = 20,
     [string]$Hold = '2m',
+    [ValidateSet('baseline', 'requests')][string]$Script = 'baseline',
+    [ValidatePattern('^phase-[0-9]+$')][string]$Phase = 'phase-3',
+    [int]$ApproverVus = 5,
     [string]$BaseUrl = 'http://engineering-template.test',
     [string]$Psql = 'D:\PostgreSQL\18\bin\psql.exe'
 )
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
-$out = Join-Path $root "docs\evidence\phase-3\$((Get-Date).ToString('yyyy-MM-dd'))-$Name"
+$out = Join-Path $root "docs\evidence\$Phase\$((Get-Date).ToString('yyyy-MM-dd'))-$Name"
 New-Item -ItemType Directory $out -Force | Out-Null
 
 $roles = @{}
@@ -64,14 +71,14 @@ try {
     # Every page once, one at a time, so templates compile before the load:
     # on Windows two processes compiling the same view can collide on the
     # final rename ("Access is denied"), which Linux does atomically.
-    k6 run --quiet --vus 1 --iterations 1 -e BASE_URL=$BaseUrl tests\load\baseline.js 2>&1 | Out-Null
+    k6 run --quiet --vus 1 --iterations 1 -e BASE_URL=$BaseUrl tests\load\$Script.js 2>&1 | Out-Null
     php artisan cache:clear --quiet
     Invoke-Owner 'select pg_stat_statements_reset();' | Out-Null
 
     $started = Get-Date
     k6 run --quiet --summary-export (Join-Path $out 'summary.json') `
-        -e BASE_URL=$BaseUrl -e VISITOR_VUS=$VisitorVus -e STAFF_VUS=$StaffVus -e HOLD=$Hold `
-        tests\load\baseline.js 2>&1 | Tee-Object (Join-Path $out 'k6.log') | Out-Null
+        -e BASE_URL=$BaseUrl -e VISITOR_VUS=$VisitorVus -e STAFF_VUS=$StaffVus -e APPROVER_VUS=$ApproverVus -e HOLD=$Hold `
+        tests\load\$Script.js 2>&1 | Tee-Object (Join-Path $out 'k6.log') | Out-Null
     $k6Exit = $LASTEXITCODE
     $finished = Get-Date
     $ErrorActionPreference = 'Stop'
@@ -90,7 +97,7 @@ order by total_exec_time desc limit 15;
     @(
         "run: $Name"
         "started: $($started.ToString('s'))  finished: $($finished.ToString('s'))"
-        "visitor VUs: $VisitorVus  staff VUs: $StaffVus  hold: $Hold  base: $BaseUrl"
+        "script: $Script.js  visitor VUs: $VisitorVus  staff VUs: $StaffVus  approver VUs: $ApproverVus  hold: $Hold  base: $BaseUrl"
         "k6 exit code: $k6Exit"
         "machine: $((Get-CimInstance Win32_Processor | Select-Object -First 1).Name), $((Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors) logical CPUs, $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)) GB RAM"
         "software: PHP $(php -r 'echo PHP_VERSION;'), $(k6 version | Select-Object -First 1), PostgreSQL $((Invoke-Owner 'show server_version;' | Select-Object -Skip 1 -First 1))"

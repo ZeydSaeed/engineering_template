@@ -12,6 +12,23 @@ repeated on the target host before any capacity decision.
 
 ## Load runs (tests/load/baseline.js, scripts/perf/run-baseline.ps1)
 
+> **Correction (2026-11-14, Phase 9).** In the runs below, staff were signed
+> out after their first round: k6 empties each VU's cookie jar after every
+> iteration unless `noCookiesReset` is set, and the script still believed it
+> was signed in. Their later page loads were redirects to the sign-in page,
+> which answer 200, so every check passed. In normal-50, against 1,472
+> requests, pg_stat_statements shows 140 reads of a user by id and 20
+> audit records written (one sign-in each). The staff figures below
+> therefore mostly measure the sign-in page, not the dashboard or settings.
+> The script now keeps sessions and fails any staff page that ends on the
+> sign-in page. normal-50 run again with it, same machine and settings
+> (`docs/evidence/phase-9/2026-11-14-baseline-normal-50-corrected`): 947
+> requests, 5.2 req/s, 0 % failed, checks 1,734/1,734; k6 latency p50 5.83 s
+> / p95 9.05 s; app time p50 111 ms / p95 332 ms; db time p50 300 ms / p95
+> 819 ms; machine CPU 89 % on average, p90 100 %. The machine saturates at
+> 50 VUs with real staff pages. The figures below are kept as they were
+> measured.
+
 Visitors load the home and sign-in pages; staff sign in for real (password
 and TOTP), then move between three pages with 2 to 5 s think time. Ramp 30 s,
 hold, ramp down 15 s.

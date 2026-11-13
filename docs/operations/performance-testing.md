@@ -29,7 +29,21 @@ php artisan optimize:clear
 The script clears rate limits and statement statistics, warms every page up
 once, runs k6 while sampling CPU and memory every 2 s, and saves `run.txt`,
 `k6.log`, `summary.json`, `resources.csv` and `top-statements.txt` under
-`docs/evidence/phase-3/<date>-<name>/`.
+`docs/evidence/<phase>/<date>-<name>/` (`-Phase`, `phase-3` by default).
+
+The Requests module (ADR-0033): requesters draft and submit, approvers
+decide. Seed approvers and requests once (local and development database
+only), then run with `-Script requests`:
+
+```powershell
+php artisan db:seed --class=RequestsPerformanceSeeder   # PERF_REQUESTS, default 10000
+.\scripts\perf\run-baseline.ps1 -Script requests -Phase phase-9 -Name requests-25 -StaffVus 20 -ApproverVus 5 -Hold 2m
+```
+
+Both scripts keep each VU's session between iterations (`noCookiesReset`)
+and fail any staff page that ends on the sign-in page: without that, k6
+signs staff out after their first round and measures redirects (the
+Phase 3 correction in `docs/evidence/phase-3/SUMMARY.md`).
 
 Audit write throughput: `.\scripts\bench\audit-writes.ps1 -Writes 250`.
 

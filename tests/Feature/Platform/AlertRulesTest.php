@@ -69,11 +69,12 @@ it('gives every alert a severity, a summary and an existing runbook section', fu
 
 it('alerts only on application metrics that exist', function () {
     $exported = [];
-    preg_match_all('/^(platform_[a-z_]+)[ {]/m', app(PlatformMetrics::class)->render(), $matches);
+    // Platform metrics and every module's (MetricsSource).
+    preg_match_all('/^((?:platform|module)_[a-z_]+)[ {]/m', app(PlatformMetrics::class)->render(), $matches);
     $exported = array_unique($matches[1]);
 
     foreach (alertRules() as $rule) {
-        preg_match_all('/platform_[a-z_]+/', (string) $rule['expr'], $used);
+        preg_match_all('/(?:platform|module)_[a-z_]+/', (string) $rule['expr'], $used);
 
         foreach ($used[0] as $metric) {
             // toContain takes needles only; the message goes with toBeTrue.

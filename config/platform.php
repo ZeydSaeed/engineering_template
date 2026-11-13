@@ -285,6 +285,7 @@ return [
         'database' => env('PERF_DATABASE', 'engineering_template'),
         'users' => (int) env('PERF_USERS', 1000),
         'audit_events' => (int) env('PERF_AUDIT_EVENTS', 50000),
+        'requests' => (int) env('PERF_REQUESTS', 10000),
     ],
 
 ];

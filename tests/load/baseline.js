@@ -42,6 +42,10 @@ const stages = (vus) => [
 ];
 
 export const options = {
+    // Keep each VU's session between iterations: k6 empties the cookie jar
+    // after every iteration by default, which silently signed staff out
+    // after their first round (found in Phase 9; docs/evidence/phase-3).
+    noCookiesReset: true,
     scenarios: {
         visitors: {
             executor: 'ramping-vus',
@@ -77,7 +81,12 @@ function recordTiming(response) {
 function get(path, type) {
     const response = http.get(`${BASE}${path}`, { tags: { type, page: path } });
     recordTiming(response);
-    check(response, { [`${path} 200`]: (r) => r.status === 200 });
+    check(response, {
+        [`${path} 200`]: (r) => r.status === 200,
+        // A staff page that ends on the sign-in page measured the redirect,
+        // not the page (a 200 all the same).
+        'still signed in': (r) => type !== 'read' || !r.url.includes('/login'),
+    });
     return response;
 }
 

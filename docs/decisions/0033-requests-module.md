@@ -1,7 +1,7 @@
 # ADR-0033: The Requests module, the golden path
 
 - Status: Accepted (9.1 domain, data, actions; 9.2 interface and
-  integration; observability follows in 9.3)
+  integration; 9.3 observability and measurements)
 - Date: 2026-11-14
 
 ## Context
@@ -93,6 +93,28 @@ someone else approves or rejects it, with an attachment.
 - Notifications (`request_submitted|approved|rejected`) read as sentences
   in the reader's language and lead to the request.
 
+**Observability and measurements** (batch 9.3)
+
+- Modules add metrics through `App\Platform\Observability\MetricsSource`,
+  tagged in the module's provider; the platform asks every tagged source
+  and knows no module. A source's metrics are named `module_<name>_*`
+  (the writer refuses anything else), and a source that throws is
+  reported and marked down (`platform_metrics_source_up`, alert
+  MetricsSourceFailing) without breaking `/metrics`.
+- Requests exports `module_requests_by_status{status}` and
+  `module_requests_oldest_waiting_age_seconds` (0 when nothing waits, so
+  the alert can fire); alert RequestsWaitingLong (over three days, for an
+  hour) with its runbook, `docs/runbooks/requests.md`.
+- 10,000 requests from 200 people on PostgreSQL: every list, the request
+  page, the dashboard and the scrape stay within 6 to 10 queries, a few
+  tens of milliseconds and under 1 MB; the approver's queue, the waiting
+  time and a requester's list read indexes (plans checked in the test).
+- A local k6 scenario (`tests/load/requests.js`): requesters draft and
+  submit, approvers decide, all signed in for real. Figures in
+  `docs/evidence/phase-9`, local only.
+- `docs/architecture/building-a-module.md` walks through building a
+  module from this one.
+
 ## Consequences
 
 - The module is a worked example of every rule in
@@ -111,7 +133,10 @@ cannot diverge from the change.
 ## Performance implications
 
 Each action is one short transaction on one locked row; reads use the two
-indexes. Measured in batch 9.3.
+indexes. Measured in batch 9.3 (`docs/evidence/phase-9/verification.txt`):
+the large-table budgets hold, and under local load each write also waits
+for the audit chain's advisory lock (about 3.5 ms on average at 25 users),
+the cost of a tamper-evident trail (ADR-0013).
 
 ## Reversal or migration strategy
 

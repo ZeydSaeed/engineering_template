@@ -125,3 +125,102 @@ Gates
 - Bundle: base 184.3 kB (budget 185; 182.0 before the batch, the module's
   route helpers in the navigation and notifications); request pages
   +3.2, +29.5 and +17.3 kB (limit +35).
+
+Batch 9.3: observability and measurements (2026-11-14)
+======================================================
+
+What was added
+- Platform: MetricsSource (an interface modules implement and tag in their
+  provider) and MetricsWriter (refuses names outside module_<name>_*).
+  PlatformMetrics asks every tagged source; a source that throws is
+  reported, exported as platform_metrics_source_up{source} 0, and the rest
+  of /metrics still answers. The platform imports no module.
+- Requests: module_requests_by_status{status} and
+  module_requests_oldest_waiting_age_seconds (0 when nothing waits).
+- Alerts: MetricsSourceFailing (application group) and RequestsWaitingLong
+  (group module-requests), with runbook sections (docs/runbooks/
+  application.md, docs/runbooks/requests.md).
+- docs/architecture/building-a-module.md: building a module, step by step,
+  from this one.
+- RequestsPerformanceSeeder (local and development database only, refuses
+  otherwise; tested) and tests/load/requests.js; run-baseline.ps1 takes
+  -Script, -Phase and -ApproverVus.
+
+Tests
+- ModuleMetricsTest: the module's metrics through its source, zero waiting
+  time when nothing waits, a failing source marked down without breaking
+  the scrape and without half its lines, names outside the prefix refused.
+- AlertRulesTest now checks module_* metrics used by alerts exist too.
+- RequestsLargeTableTest (PostgreSQL): 10,000 requests from 200 people.
+
+Large table (PostgreSQL 18, local, one run; budgets: 12 queries, 1.5 s,
+32 MB):
+  approver, first page                          25.8 ms   6 queries  0.3 MB
+  waiting for me, oldest first                  28.8 ms   6 queries  0.3 MB
+  rejected, by amount, 100 per page             46.2 ms   6 queries  0.6 MB
+  search                                        36.4 ms   6 queries  0.3 MB
+  last page (400)                               39.7 ms   6 queries  0.3 MB
+  requester's own list (50 of 10,000)          266.0 ms   6 queries  0.3 MB
+  one request with its history                  34.3 ms   6 queries  0.2 MB
+  dashboard (approver widget)                   26.4 ms  10 queries  0.2 MB
+  metrics scrape                                28.3 ms   7 queries  0.3 MB
+  The 266 ms was the first measured request of that test; measured three
+  times in a row in a separate run it took 23.1, 21.2 and 26.0 ms, so it
+  is a cold start, not the query. Plans: the queue reads
+  approval_requests_status_submitted_at_index, the waiting time an index
+  only scan of it, the requester's list
+  approval_requests_requester_id_created_at_index backwards; none scans
+  the table.
+
+Load (k6, local machine: Intel Core i5-7300U, 4 logical CPUs, 15.8 GB;
+PHP 8.5.12 on Herd, PostgreSQL 18.2, k6 2.2.0; application, database, web
+server and load generator on the same machine; 10,000 seeded requests,
+1,000 users; not a server's capacity)
+- requests-25 (20 requesters, 5 approvers, ramp 30 s, hold 2 min, 2 to 5 s
+  think time): 1,100 requests, 5.9 req/s, 0 % failed, checks
+  1,184/1,184, sign-in failures 0. k6 latency p50 989 ms / p95 3.43 s;
+  app time p50 111 ms / p95 296 ms; db time p50 267 ms / p95 764 ms;
+  queries per request p50 10 / max 14. Machine CPU 81 % on average, p90
+  100 %. 113 requests created and 113 submitted, 32 decisions answered,
+  14 refused as already decided (two approvers on the same request,
+  expected).
+  Cross-check with the database (from the start of the run, warm-up
+  included: one request created, submitted and decided): 114 created,
+  114 submitted, 31 decided; audit records request.created 114,
+  request.submitted 114, request.approved 27, request.rejected 4. k6
+  counted 33 decisions with the warm-up, the database 31: two answers
+  without error that changed nothing, consistent with an approver
+  repeating their own decision (idempotent); not traced per request.
+  Top statement by total time after the per-connection time zone:
+  pg_advisory_xact_lock, 281 calls, 3.45 ms on average, the audit chain's
+  writer lock (ADR-0013) waited for by concurrent writes.
+- baseline-normal-50-corrected: the Phase 3 scenario with the corrected
+  script (below): 947 requests, 5.2 req/s, 0 % failed, checks
+  1,734/1,734; k6 latency p50 5.83 s / p95 9.05 s; app time p50 111 ms /
+  p95 332 ms; db time p50 300 ms / p95 819 ms; machine CPU 89 % on
+  average, p90 100 %.
+Raw files: docs/evidence/phase-9/2026-11-14-*/ (run.txt, k6.log,
+summary.json, resources.csv, top-statements.txt).
+
+Defects found and fixed during the batch
+- The k6 scripts signed staff out after their first round: k6 empties the
+  cookie jar after each iteration unless noCookiesReset is set, and the
+  redirect to the sign-in page answers 200, so the checks passed. Found
+  when every requester's second draft failed. Phase 3's staff figures
+  were affected; docs/evidence/phase-3/SUMMARY.md has a correction note
+  with the figures measured again, and the old ones kept as measured.
+  Both scripts now keep sessions and fail a staff page that ends on the
+  sign-in page.
+- A counter of refused decisions matched its sentence in the page's
+  translation dictionary on every answer; it now reads the page's
+  errors.decision.
+- The large-table test's data first broke the lock_version >= 1
+  constraint (the constraint working).
+
+Gates
+- SQLite: 315 passed, 38 skipped; Pint, PHPStan 0, deptrac 0 (the platform
+  imports no module; the module's source depends on Platform only), vp
+  check, tsc.
+- PostgreSQL: 351 passed, 2 skipped (the large-table test included).
+- Bundle: base 184.3 kB, unchanged (no interface change in this batch).
+- Browsers: no interface change; the full matrix runs in CI.

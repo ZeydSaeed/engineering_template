@@ -7,11 +7,13 @@ use App\Modules\Requests\Application\Actions\DecideRequest;
 use App\Modules\Requests\Application\Actions\SubmitRequest;
 use App\Modules\Requests\Application\Jobs\NotifyApprovers;
 use App\Modules\Requests\Application\Jobs\NotifyRequester;
+use App\Modules\Requests\Application\Metrics\RequestsMetrics;
 use App\Modules\Requests\Application\Queries\RequestsOverviewQuery;
 use App\Modules\Requests\Contracts\RequestsOverview;
 use App\Modules\Requests\Http\RequestPolicy;
 use App\Modules\Requests\Http\RequestsTable;
 use App\Modules\Requests\Models\ApprovalRequest;
+use App\Platform\Observability\MetricsSource;
 use App\Platform\Tables\TableRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
@@ -35,6 +37,9 @@ class RequestsServiceProvider extends ServiceProvider
 
         // The module's public read API (Contracts), for the dashboard.
         $this->app->bind(RequestsOverview::class, RequestsOverviewQuery::class);
+
+        // Its part of /metrics (module_requests_*).
+        $this->app->tag([RequestsMetrics::class], MetricsSource::TAG);
     }
 
     public function boot(): void

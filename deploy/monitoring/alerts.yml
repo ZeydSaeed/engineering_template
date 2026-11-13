@@ -1,7 +1,7 @@
 # Prometheus alerting rules (ADR-0023). Every alert has a severity, a summary
 # and a runbook section that says what to check, what to do and how to know
 # it is fixed; tests/Feature/Platform/AlertRulesTest.php enforces this and
-# checks that every platform_* metric used here exists.
+# checks that every platform_* and module_* metric used here exists.
 #
 # critical: act now (data loss, outage, tampering). warning: act today.
 
@@ -69,6 +69,15 @@ groups:
                 summary: An uploaded file has waited over 30 minutes for its scan.
                 runbook: docs/runbooks/application.md#filescansstalled
 
+          - alert: MetricsSourceFailing
+            expr: platform_metrics_source_up == 0
+            for: 5m
+            labels:
+                severity: warning
+            annotations:
+                summary: The {{ $labels.source }} module's metrics fail; its own alerts cannot fire.
+                runbook: docs/runbooks/application.md#metricssourcefailing
+
     - name: data
       rules:
           - alert: BackupMissing
@@ -102,6 +111,18 @@ groups:
             annotations:
                 summary: The audit chain has not been verified for over 26 hours.
                 runbook: docs/runbooks/data.md#auditchainnotverified
+
+    # One group per module, from the module's MetricsSource (module_<name>_*).
+    - name: module-requests
+      rules:
+          - alert: RequestsWaitingLong
+            expr: module_requests_oldest_waiting_age_seconds > 3 * 86400
+            for: 1h
+            labels:
+                severity: warning
+            annotations:
+                summary: A submitted request has waited over three days for a decision.
+                runbook: docs/runbooks/requests.md#requestswaitinglong
 
     - name: infrastructure
       rules:

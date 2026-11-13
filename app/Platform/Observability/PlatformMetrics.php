@@ -11,21 +11,22 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
+use Throwable;
 
 /**
  * Application metrics in the Prometheus text format (ADR-0023): queues,
- * outbox, files, backups and the audit chain. Host, PostgreSQL, Redis and
- * PHP-FPM metrics come from their own exporters. Every query is a count over
- * an indexed column, cheap enough for a scrape every 30 seconds.
+ * outbox, files, backups and the audit chain, then each module's own
+ * (MetricsSource). Host, PostgreSQL, Redis and PHP-FPM metrics come from
+ * their own exporters. Every query is a count over an indexed column, cheap
+ * enough for a scrape every 30 seconds.
  */
 class PlatformMetrics
 {
-    /** @var list<string> */
-    private array $lines = [];
+    private MetricsWriter $out;
 
     public function render(): string
     {
-        $this->lines = [];
+        $this->out = new MetricsWriter('platform_');
         $now = now()->getTimestamp();
 
         $this->gauge('platform_up', 'Application answered the scrape.', 1);
@@ -35,8 +36,39 @@ class PlatformMetrics
         $this->files($now);
         $this->backups();
         $this->audit();
+        $modules = $this->modules();
 
-        return implode("\n", $this->lines)."\n";
+        return implode("\n", [...$this->out->lines(), ...$modules])."\n";
+    }
+
+    /**
+     * Each module's metrics, each source on its own: one that fails is
+     * reported and marked down, and the scrape goes on.
+     *
+     * @return list<string>
+     */
+    private function modules(): array
+    {
+        $lines = [];
+        $this->type('platform_metrics_source_up', 'Whether a module\'s metrics source answered this scrape.');
+
+        /** @var MetricsSource $source */
+        foreach (app()->tagged(MetricsSource::TAG) as $source) {
+            $writer = new MetricsWriter('module_'.$source->name().'_');
+
+            try {
+                $source->collect($writer);
+                $lines = [...$lines, ...$writer->lines()];
+                $up = 1;
+            } catch (Throwable $e) {
+                report($e);
+                $up = 0;
+            }
+
+            $this->sample('platform_metrics_source_up', ['source' => $source->name()], $up);
+        }
+
+        return $lines;
     }
 
     private function queues(int $now): void
@@ -131,14 +163,12 @@ class PlatformMetrics
 
     private function gauge(string $name, string $help, int|float $value): void
     {
-        $this->type($name, $help);
-        $this->sample($name, [], $value);
+        $this->out->gauge($name, $help, $value);
     }
 
     private function type(string $name, string $help): void
     {
-        $this->lines[] = "# HELP {$name} {$help}";
-        $this->lines[] = "# TYPE {$name} gauge";
+        $this->out->type($name, $help);
     }
 
     /**
@@ -146,12 +176,6 @@ class PlatformMetrics
      */
     private function sample(string $name, array $labels, int|float $value): void
     {
-        $rendered = $labels === [] ? '' : '{'.implode(',', array_map(
-            fn (string $key, string $label): string => $key.'="'.addcslashes($label, "\\\"\n").'"',
-            array_keys($labels),
-            $labels,
-        )).'}';
-
-        $this->lines[] = "{$name}{$rendered} {$value}";
+        $this->out->sample($name, $labels, $value);
     }
 }

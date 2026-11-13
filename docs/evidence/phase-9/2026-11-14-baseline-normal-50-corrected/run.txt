@@ -1,0 +1,8 @@
+run: baseline-normal-50-corrected
+started: 2026-11-14T00:21:10  finished: 2026-11-14T00:24:12
+script: baseline.js  visitor VUs: 30  staff VUs: 20  approver VUs: 5  hold: 2m  base: http://engineering-template.test
+k6 exit code: 0
+machine: Intel(R) Core(TM) i5-7300U CPU @ 2.60GHz, 4 logical CPUs, 15.8 GB RAM
+software: PHP 8.5.12, k6.exe v2.2.0 (commit/00a9a1b7f5, go1.26.5, windows/amd64), PostgreSQL 18.2
+note: application, database, web server and load generator share this machine;
+the postgres process group includes every local database on this server, not only the template

@@ -53,6 +53,13 @@ user, from the current release directory.
 - **Act:** restart the scanner or the worker; then `php artisan platform:files-sweep` queues stale scans again.
 - **Verify:** `platform_files{status="pending"}` falls; the oldest pending age returns to minutes.
 
+## MetricsSourceFailing
+
+- **Meaning:** a module's metrics source threw during the scrape, so its `module_<name>_*` metrics are missing and the module's own alerts cannot fire. The rest of `/metrics` still works.
+- **Check:** the application log for the exception reported at scrape time (the source's class is in the stack trace); `php artisan tinker --execute "echo app(App\Platform\Observability\PlatformMetrics::class)->render();"` on the host.
+- **Act:** fix the cause (usually a migration not run, or the database refusing the query); if a release introduced it, roll back (see ApplicationDown).
+- **Verify:** `platform_metrics_source_up{source="<name>"}` is 1 and the module's metrics are back.
+
 ## Deploying a release (no alert; the procedure)
 
 - **Artifact:** `engineering-template-<sha>.tar.gz` and its `.sha256` from the
