@@ -76,3 +76,40 @@ Gates (this batch's final code)
 Not verified
 - Real Safari on macOS/iOS (WebKit is its engine only).
 - ZAP locally (no Docker on this machine).
+
+## Batch 8.2 (2026-11-13): release artifact, checksum and SBOM (ADR-0031)
+
+Implemented
+- scripts/release/build.sh (from git archive of the commit; --no-dev;
+  assets built; development files removed; RELEASE.json; fixed times,
+  owners, order; gzip -n), verify.sh, sbom.sh (Syft 1.55.0, checksum
+  bb65...490d linux / ada4...67ca2 windows, both matched the published
+  list).
+- release.yml: build, build again and compare, verify, SBOM, artifact kept
+  30 days; provenance attestation on main only (skipped on phase branches
+  by design: a Sigstore log entry cannot be withdrawn).
+
+Local checks (commit 2e25d6c, Windows, Git Bash)
+- Build: 380 s, 6.7 MB, 9,679 entries; verify.sh ok.
+- verify.sh rejects: an artifact with a .env inside ("forbidden
+  entries"), a wrong checksum ("checksum does not match"), a missing
+  public/build/manifest.json ("missing ...").
+- First verify run flagged vendor/phpstan/phpdoc-parser: a production
+  dependency (laravel/wayfinder), so the rule was too broad; it now names
+  exactly the require-dev packages.
+- SBOM: CycloneDX 1.7, 454 components (100 Composer, 331 npm build
+  inputs), no development Composer packages, 431 with licences.
+
+Mistake during the batch, corrected
+- `bash` from PowerShell started WSL instead of Git Bash; the build ran
+  there, failed at Composer, and its Windows output path created an empty
+  folder chain named "C" + U+F03A inside the workspace (0 files, 10
+  folders). It was removed by its exact path after checking it held no
+  files. Local runs now call Git Bash by its full path.
+
+Gates
+- SQLite: 280 passed, 19 skipped; PostgreSQL: 297 passed, 2 skipped;
+  PHPStan 0; deptrac 0. No application or interface code changed in this
+  batch; the browser suites ran in CI on all three engines.
+- CI on b566668: tests, security and release all green; the second build
+  matched the first.

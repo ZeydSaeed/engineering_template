@@ -23,7 +23,7 @@ function workflows(): array
 }
 
 it('finds the workflows', function () {
-    expect(array_keys(workflows()))->toContain('tests.yml', 'security.yml');
+    expect(array_keys(workflows()))->toContain('tests.yml', 'security.yml', 'release.yml');
 });
 
 it('pins every action to a full commit SHA', function () {

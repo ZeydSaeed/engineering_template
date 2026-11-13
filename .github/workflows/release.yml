@@ -1,0 +1,109 @@
+name: release
+
+# One artifact per commit, built once and deployed unchanged (ADR-0031):
+# the archive and its SHA-256, checked for what it must and must not hold,
+# built twice to prove the same commit gives the same bytes, and its bill
+# of materials. On main, a signed provenance attestation as well.
+
+on:
+  push:
+    branches:
+      - main
+      - 'phase-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Build
+        run: bash scripts/release/build.sh dist
+
+      - name: Same commit, same bytes
+        run: |
+          bash scripts/release/build.sh again
+          first=$(cut -d' ' -f1 dist/*.sha256)
+          second=$(cut -d' ' -f1 again/*.sha256)
+          echo "first build:  $first"
+          echo "second build: $second"
+          if [ "$first" != "$second" ]; then
+            echo "::error title=Not reproducible::two builds of one commit differ"
+            exit 1
+          fi
+          echo "::notice title=Reproducible::two builds of $GITHUB_SHA: sha256 $first"
+
+      - name: Verify
+        run: bash scripts/release/verify.sh dist/*.tar.gz
+
+      - name: Syft (checksum verified)
+        env:
+          VERSION: 1.55.0
+          SHA256: bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d
+        run: |
+          curl -sSfLo syft.tar.gz "https://github.com/anchore/syft/releases/download/v${VERSION}/syft_${VERSION}_linux_amd64.tar.gz"
+          echo "${SHA256}  syft.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/syft" && tar -xzf syft.tar.gz -C "$RUNNER_TEMP/syft" syft
+          rm syft.tar.gz
+
+      - name: Bill of materials
+        run: SYFT_BIN="$RUNNER_TEMP/syft/syft" bash scripts/release/sbom.sh dist/*.tar.gz
+
+      - name: Keep the artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+          if-no-files-found: error
+
+  # A signed statement, in the public Sigstore log, that this workflow
+  # built this artifact from this commit. Main only: a phase branch is not
+  # a release until the owner merges it.
+  attest:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Fetch the artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: dist
+
+      - name: Attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
