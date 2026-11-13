@@ -178,11 +178,13 @@ for (const locale of ['ar', 'en']) {
 
             const result = page.locator('[data-slot="bulk-result"]');
             await expect(result).toBeVisible();
-            // Measured once the confirmation has closed: its fading overlay
-            // would dim the table under axe's contrast check (seen in WebKit).
+            // Measured once the confirmation has closed and the table has
+            // reloaded: the overlay and the reloading table (60% opacity)
+            // would fail axe's contrast check (seen in WebKit on CI).
             await expect(
                 page.locator('[data-slot="dialog-overlay"]'),
             ).toHaveCount(0);
+            await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
             await expect(result).toHaveAttribute('role', 'status');
             await expect(result).toContainText('Browser Test');
             await expect(result).toContainText(

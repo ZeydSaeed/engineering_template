@@ -16,8 +16,13 @@ risk). The repository is public, so every commit in its history is public.
   Semgrep (php, typescript, react, javascript, secrets rule sets), `composer
   audit` and `npm audit` at any severity, dependency review on pull
   requests (advisories and copyleft licences that do not fit a template),
-  and a ZAP baseline scan of the signed-out pages served with the
-  production security settings. It also runs weekly, because advisories
+  and a ZAP baseline scan of the signed-out pages. The scan runs against
+  the application as a server runs it: the `deploy/` Nginx and PHP-FPM
+  templates, its own user, a release under `/srv` with shared storage,
+  HTTPS and `APP_ENV=production` with the environment checks on
+  (`scripts/ci/production-like.sh`). Scanning `php artisan serve` instead
+  reported headers missing on assets that Nginx serves in production, and
+  would never have tested the templates. It also runs weekly, because advisories
   appear without any change here.
 - Every alert fails. A false positive is ignored by its exact fingerprint
   or rule id, with a reason (`.gitleaksignore`, `.zap/rules.tsv`).
@@ -42,6 +47,18 @@ risk). The repository is public, so every commit in its history is public.
   languages. The same close without axe, or with the wait done inside the
   page, never crashed. It is a fault of the test browser's automation
   layer, not of the application: that test waits inside the page.
+
+## Findings of the first ZAP scans
+
+- Fixed: `Cross-Origin-Resource-Policy: same-origin` and
+  `Cross-Origin-Embedder-Policy: require-corp` on every response (not
+  while the Vite dev server runs); `X-Powered-By` removed by the
+  application as well as by the FPM template; the Nginx `/build/` block
+  sends CORP and Permissions-Policy too.
+- By design, kept with a reason in `.zap/rules.tsv`: the readable
+  XSRF-TOKEN cookie, the theme choice in localStorage, ZAP's note that the
+  site is a JavaScript application, and `style-src 'unsafe-inline'`
+  (ADR-0016, residual risk).
 
 ## Consequences
 

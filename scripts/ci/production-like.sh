@@ -25,11 +25,19 @@ SOURCE=$(pwd)
 BASE=/srv/$APP
 RELEASE=$BASE/releases/${GITHUB_SHA:-local}
 
-# PHP-FPM with the extensions the application uses; Nginx.
+# PHP-FPM and its CLI from the same packages (so both have the same
+# extensions), with the extensions the application uses; Nginx.
 sudo apt-get update -qq
+if ! apt-cache show "php$PHP-fpm" > /dev/null 2>&1; then
+    sudo add-apt-repository -y ppa:ondrej/php > /dev/null
+    sudo apt-get update -qq
+fi
+apt-cache policy "php$PHP-fpm" | head -3
 sudo apt-get install -y -qq --no-install-recommends nginx "php$PHP-fpm" \
-    "php$PHP-sqlite3" "php$PHP-mbstring" "php$PHP-xml" "php$PHP-intl" \
-    "php$PHP-curl" "php$PHP-bcmath" "php$PHP-zip" > /dev/null
+    "php$PHP-cli" "php$PHP-sqlite3" "php$PHP-mbstring" "php$PHP-xml" \
+    "php$PHP-intl" "php$PHP-curl" "php$PHP-bcmath" "php$PHP-zip"
+PHP_CLI=/usr/bin/php$PHP
+"$PHP_CLI" -m | grep -qi pdo_sqlite
 
 # The application's own user, owning its release and shared directories.
 id "$APP" > /dev/null 2>&1 || sudo useradd --system --no-create-home --shell /usr/sbin/nologin "$APP"
@@ -78,10 +86,10 @@ sudo chmod 600 "$BASE/shared/.env"
 as_app() { sudo -u "$APP" -- "$@"; }
 (
     cd "$RELEASE"
-    as_app php artisan migrate --force --no-interaction
-    as_app php artisan config:cache
-    as_app php artisan route:cache
-    as_app php artisan view:cache
+    as_app "$PHP_CLI" artisan migrate --force --no-interaction
+    as_app "$PHP_CLI" artisan config:cache
+    as_app "$PHP_CLI" artisan route:cache
+    as_app "$PHP_CLI" artisan view:cache
 )
 sudo ln -sfn "$RELEASE" "$BASE/current"
 
