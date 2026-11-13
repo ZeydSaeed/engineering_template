@@ -115,8 +115,16 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sed "s/APP/$APP/g" deploy/php/app-pool.conf | sudo tee "/etc/php/$PHP/fpm/pool.d/$APP.conf" > /dev/null
 sudo cp deploy/php/app-php.ini "/etc/php/$PHP/fpm/conf.d/99-$APP.ini"
 
-sudo nginx -t
-sudo "php-fpm$PHP" -t
+check() {
+    local out
+    if ! out=$(sudo "$@" 2>&1); then
+        while IFS= read -r line; do echo "::error title=$1 -t::$line"; done <<< "$out"
+        exit 1
+    fi
+}
+nginx -v 2>&1
+check nginx -t
+check "php-fpm$PHP" -t
 sudo service "php$PHP-fpm" restart
 sudo service nginx restart
 
