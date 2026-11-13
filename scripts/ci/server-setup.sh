@@ -38,10 +38,20 @@ BASE=/srv/$APP
 
 # PHP-FPM and its CLI from the same packages (so both have the same
 # extensions), with the extensions the application uses; Nginx.
-sudo apt-get update -qq
+# Package sources are outside services: a few attempts each.
+retry() {
+    for attempt in 1 2 3; do
+        "$@" && return 0
+        echo "::warning title=server-setup.sh::attempt $attempt failed: $*"
+        sleep $((attempt * 10))
+    done
+    return 1
+}
+echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-retries > /dev/null
+retry sudo apt-get update -qq
 if ! apt-cache show "php$PHP-fpm" > /dev/null 2>&1; then
-    sudo add-apt-repository -y ppa:ondrej/php > /dev/null
-    sudo apt-get update -qq
+    retry sudo add-apt-repository -y ppa:ondrej/php > /dev/null
+    retry sudo apt-get update -qq
 fi
 apt-cache policy "php$PHP-fpm" | head -3
 sudo apt-get install -y -qq --no-install-recommends nginx "php$PHP-fpm" \

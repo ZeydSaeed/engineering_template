@@ -85,6 +85,15 @@ risk). The repository is public, so every commit in its history is public.
   trigger through. Both now assert on booleans, and each was checked
   against a planted violation.
 
+## Retries (added in batch 8.3)
+
+- On CI only, a browser test that fails is run once more; one that then
+  passes is reported as flaky in the run summary and annotations, so it
+  stays visible. Reason: one WebKit run stalled waiting for a button to be
+  "stable" on an unchanged page, after many green runs. Locally there are
+  no retries. Package sources used by `server-setup.sh` (apt, the PHP
+  PPA) get three attempts: one run failed adding the PPA.
+
 ## Consequences
 
 - A new advisory in any dependency fails the weekly run and blocks merges
