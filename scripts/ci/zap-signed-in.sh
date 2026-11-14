@@ -79,15 +79,18 @@ PY
 )
 echo "Signed in; the session reaches /admin/users."
 
-# Every request ZAP sends carries the session (replacer rule); the spider
-# does not submit forms, so it never posts the sign-out; the active scan is
+# Every request ZAP sends carries the session (replacer rule). The pages are
+# an Inertia application, whose links live in page data rendered by
+# JavaScript, so the AJAX spider (a real browser, -j) finds them; the
+# sign-out address is excluded everywhere, so no click ends the session;
+# the classic spider does not submit forms; the active scan is
 # capped at 20 minutes and paced under the server's per-client limit (Nginx:
 # 20 requests a second, burst 40), so the scan tests the application, not
 # the limiter.
 sudo truncate -s 0 /var/log/nginx/access.log
 status=0
 docker run --rm --network host --add-host "$HOST:127.0.0.1" -v "$OUT:/zap/wrk:rw" "$ZAP_IMAGE" \
-    zap-full-scan.py -t "https://$HOST/dashboard" -m 3 -J report.json -r report.html -I \
+    zap-full-scan.py -t "https://$HOST/dashboard" -m 3 -j -J report.json -r report.html -I \
     -z "-config replacer.full_list(0).description=session \
         -config replacer.full_list(0).enabled=true \
         -config replacer.full_list(0).matchtype=REQ_HEADER \
@@ -95,7 +98,7 @@ docker run --rm --network host --add-host "$HOST:127.0.0.1" -v "$OUT:/zap/wrk:rw
         -config replacer.full_list(0).regex=false \
         -config replacer.full_list(0).replacement=$COOKIE \
         -config spider.processform=false -config spider.postform=false \
-        -config scanner.maxScanDurationInMins=20         -config scanner.threadPerHost=2 -config scanner.delayInMs=100         -config spider.thread=2" \
+        -config scanner.maxScanDurationInMins=20         -config scanner.threadPerHost=2 -config scanner.delayInMs=100         -config spider.thread=2         -config ajaxSpider.maxDuration=8 -config ajaxSpider.numberOfBrowsers=1         -config globalexcludeurl.url_list.url(0).regex=.*/logout.*         -config globalexcludeurl.url_list.url(0).enabled=true         -config globalexcludeurl.url_list.url(0).description=sign-out" \
     > "$OUT/zap.log" 2>&1 || status=$?
 if [ "$status" -eq 3 ] || [ ! -f "$OUT/report.json" ]; then
     grep -v -E 'Pull|Download|Verifying|Waiting|Digest|Status' "$OUT/zap.log" | tail -n 12 | while IFS= read -r line; do echo "::error title=ZAP exit $status::$line"; done
