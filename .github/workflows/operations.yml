@@ -304,3 +304,55 @@ jobs:
       - name: Measure
         run: bash scripts/ci/load-measure.sh ${{ matrix.pooler == 'none' && 'direct' || 'pgbouncer' }}
 
+  # An active ZAP scan signed in as an administrator, against the release
+  # on a server built from the deploy/ templates (the baseline in
+  # security.yml is passive and signed out). Fails on any High alert.
+  zap-signed-in:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Build the release
+        run: bash scripts/release/build.sh dist
+
+      - name: Prepare the runner as a server
+        run: bash scripts/ci/server-setup.sh
+
+      - name: Deploy
+        run: |
+          sudo SMOKE_HOST=template.test RELOAD="systemctl reload php8.5-fpm" \
+            bash scripts/deploy/deploy.sh "dist/engineering-template-$GITHUB_SHA.tar.gz"
+
+      - name: Pull ZAP
+        run: docker pull --quiet ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+
+      - name: Active scan, signed in
+        run: bash scripts/ci/zap-signed-in.sh
+
+      - name: Report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-signed-in-report
+          path: |
+            zap-signed-in/report.html
+            zap-signed-in/report.json
+          retention-days: 14
+          if-no-files-found: ignore
