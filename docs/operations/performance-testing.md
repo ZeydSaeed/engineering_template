@@ -45,6 +45,12 @@ and fail any staff page that ends on the sign-in page: without that, k6
 signs staff out after their first round and measures redirects (the
 Phase 3 correction in `docs/evidence/phase-3/SUMMARY.md`).
 
+On Linux: the `load` job in `.github/workflows/operations.yml` deploys the
+release on a CI runner with PostgreSQL 18 (`scripts/ci/server-setup.sh`
+with `APP_DB=pgsql`), once connecting directly and once through PgBouncer
+(`POOLER=pgbouncer`, `DB_EMULATE_PREPARES=true`), and runs both scenarios
+(`scripts/ci/load-measure.sh`); the figures are annotations on the run.
+
 Audit write throughput: `.\scripts\bench\audit-writes.ps1 -Writes 250`.
 
 ## Reading the results

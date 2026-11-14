@@ -114,3 +114,44 @@ rows say what is automated and what still needs a person. Still NOT
 TESTED and needing a person: screen readers (NVDA, VoiceOver), speech
 input, real phones and tablets, real Safari, real Windows contrast themes
 and chart columns in them.
+
+Batch D: load on a Linux server, direct and through PgBouncer (part of item 5)
+-------------------------------------------------------------------------------
+
+operations.yml job "load" (run 43570998096, commit f22e397): the release
+built and deployed with the real scripts on an ubuntu-latest runner (4
+vCPU) prepared by server-setup.sh with PostgreSQL 18 (APP_DB=pgsql), PHP-
+FPM 8.5 static 16 workers, Nginx over HTTPS; 300 synthetic users, 20,000
+audit records, 10,000 requests (PerformanceSeeder, RequestsPerformanceSeeder);
+k6 2.2.0 in the pinned image on the same runner. One run each; thresholds
+off, the error rate reported.
+
+| Scenario (VUs)              | Set-up    | Requests | req/s | Non-200 | Checks    | p50 / p95     | app p50 | db p50 / p95  |
+| --------------------------- | --------- | -------- | ----- | ------- | --------- | ------------- | ------- | ------------- |
+| baseline (30 visitors + 20) | direct    | 3,099    | 17.7  | 1.87 %  | 5980/6038 | 8 / 27 ms     | 8 ms    | 0 / 14 ms     |
+| baseline (30 visitors + 20) | pgbouncer | 3,126    | 18.0  | 2.43 %  | 6016/6092 | 7 / 18 ms     | 6 ms    | 0 / 6 ms      |
+| requests (20 + 5 approvers) | direct    | 1,580    | 9.0   | 0.00 %  | 1742/1742 | 25 / 33 ms    | 12 ms   | 12 / 15 ms    |
+| requests (20 + 5 approvers) | pgbouncer | 1,593    | 9.1   | 0.44 %  | 1742/1742 | 17 / 21 ms    | 11 ms   | 6 / 7 ms      |
+
+(db p50 0 ms in baseline: most of its requests are the guest pages, which
+read nothing from the database.)
+
+Reading
+- Every non-200 answer was 429 from Nginx's per-client limit (zone
+  template_requests, 20 r/s, burst 40; error.log "limiting requests"):
+  all virtual users share one address here. On the server the limit
+  works; the failures are not errors of the application.
+- PgBouncer halves database time per request (12 to 6 ms p50 in the
+  requests scenario) and cuts its latency p50 from 25 to 17 ms; throughput
+  is set by the scenarios' think time, so it does not change.
+- The same scenarios on the Windows laptop (Phase 9) took p50 989 ms and
+  5.83 s: the laptop's connection set-up and shared CPU, not the
+  application. These Linux figures are still one runner with the load
+  generator on it: a comparison of set-ups, not a capacity.
+
+Defects found on the way (in the measurement, not the application)
+- The PostgreSQL 18 server could not be installed over the runner's
+  libpq-dev (the pg_config conflict): libpq-dev is removed first.
+- The k6 container could not write its summary (folder permissions).
+- The scripts' 1 % failure threshold stopped the run at the 429s; CI now
+  measures to the end and reports the rate.

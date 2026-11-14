@@ -17,7 +17,10 @@ busy, more workers only add queueing (MEASURED locally, Phase 9: 50 VUs
 with staff really signed in gave 5.2 req/s, k6 p50 5.83 s, CPU 89 % on
 average; docs/evidence/phase-9. The Phase 3 figure of 9 to 10 req/s
 measured mostly redirects to the sign-in page: see the correction in
-docs/evidence/phase-3/SUMMARY.md).
+docs/evidence/phase-3/SUMMARY.md). On Linux (a 4-vCPU CI runner,
+PostgreSQL 18, the deploy/ templates; docs/evidence/phase-10/followups.txt)
+the same scenarios answer in p50 8 to 25 ms, and PgBouncer halves database
+time per request (12 to 6 ms).
 
 ## Inputs
 
