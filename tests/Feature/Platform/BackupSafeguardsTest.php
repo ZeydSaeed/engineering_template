@@ -132,3 +132,18 @@ it('never restores into the application database or a name without "restore"', f
         File::deleteDirectory($set);
     }
 })->throws(RuntimeException::class, 'Refusing to restore into')->with(['app', 'engineering_template', 'production']);
+
+it('restores to another database server when one is configured, else to the application\'s own', function () {
+    $connect = fn () => (new ReflectionMethod(RestoreDrill::class, 'connect'))->invoke(app(RestoreDrill::class));
+    config(['database.connections.pgsql.host' => 'app-db.internal', 'database.connections.pgsql.port' => '5432']);
+    config(['platform.backup.restore.database' => 'engineering_template_restore']);
+
+    $connect();
+    expect(config('database.connections.'.RestoreDrill::CONNECTION.'.host'))->toBe('app-db.internal')
+        ->and(config('database.connections.'.RestoreDrill::CONNECTION.'.port'))->toBe('5432');
+
+    config(['platform.backup.restore.host' => 'recovery-host.internal', 'platform.backup.restore.port' => '5433']);
+    $connect();
+    expect(config('database.connections.'.RestoreDrill::CONNECTION.'.host'))->toBe('recovery-host.internal')
+        ->and(config('database.connections.'.RestoreDrill::CONNECTION.'.port'))->toBe('5433');
+});

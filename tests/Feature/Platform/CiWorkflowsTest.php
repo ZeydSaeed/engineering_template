@@ -50,6 +50,31 @@ it('pins every container image to a digest', function () {
     }
 });
 
+it('pins every container image the CI scripts run to a digest', function () {
+    foreach (glob(base_path('scripts/ci/*.sh')) ?: [] as $file) {
+        $script = (string) file_get_contents($file);
+
+        if (! str_contains($script, 'docker run')) {
+            continue;
+        }
+
+        // Images are named once, in a variable, and that name is pinned.
+        preg_match_all('/^[A-Z_]*IMAGE="([^"]+)"/m', $script, $images);
+        expect($images[1])->not->toBeEmpty(basename($file));
+
+        foreach ($images[1] as $image) {
+            expect($image)->toMatch('/@sha256:[0-9a-f]{64}$/', basename($file));
+        }
+
+        // No image named directly on a docker run line.
+        preg_match_all('/docker run[^\n]*/', $script, $runs);
+
+        foreach ($runs[0] as $run) {
+            expect((bool) preg_match('/\s[a-z0-9.\/-]+:[A-Za-z0-9._-]+(\s|$)/', $run))->toBeFalse(basename($file).': '.$run);
+        }
+    }
+});
+
 it('reads only by default and limits every job in time', function () {
     foreach (workflows() as $name => $workflow) {
         expect($workflow['permissions'] ?? null)->toBe(['contents' => 'read'], $name);

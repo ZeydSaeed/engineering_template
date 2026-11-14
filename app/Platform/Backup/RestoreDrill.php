@@ -146,6 +146,8 @@ class RestoreDrill
         config(['database.connections.'.self::CONNECTION => [
             ...$base,
             'database' => $database,
+            'host' => (string) (config('platform.backup.restore.host') ?: $base['host']),
+            'port' => (string) (config('platform.backup.restore.port') ?: $base['port']),
             'username' => (string) config('platform.backup.restore.username'),
             'password' => (string) config('platform.backup.restore.password'),
         ]]);

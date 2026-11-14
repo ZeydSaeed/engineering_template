@@ -1,0 +1,118 @@
+# Unit tests of the alerting rules with Prometheus's own tool
+# (`promtool test rules alerts.test.yml`, run in CI by operations.yml):
+# each alert fires when it should, not before its `for`, and carries the
+# labels and annotations the runbooks are found by.
+
+rule_files:
+    - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+    # A request waits over three days; the alert waits an hour more.
+    - interval: 1m
+      input_series:
+          - series: 'module_requests_oldest_waiting_age_seconds{job="app"}'
+            values: '259300+60x120'
+      alert_rule_test:
+          - eval_time: 30m
+            alertname: RequestsWaitingLong
+            exp_alerts: []
+          - eval_time: 70m
+            alertname: RequestsWaitingLong
+            exp_alerts:
+                - exp_labels:
+                      severity: warning
+                      job: app
+                  exp_annotations:
+                      summary: A submitted request has waited over three days for a decision.
+                      runbook: docs/runbooks/requests.md#requestswaitinglong
+
+    # Nothing waits: the series is 0, never absent, and nothing fires.
+    - interval: 1m
+      input_series:
+          - series: 'module_requests_oldest_waiting_age_seconds{job="app"}'
+            values: '0x120'
+      alert_rule_test:
+          - eval_time: 110m
+            alertname: RequestsWaitingLong
+            exp_alerts: []
+
+    # A module's metrics source fails for five minutes.
+    - interval: 1m
+      input_series:
+          - series: 'platform_metrics_source_up{job="app",source="requests"}'
+            values: '1 1 0x10'
+      alert_rule_test:
+          - eval_time: 4m
+            alertname: MetricsSourceFailing
+            exp_alerts: []
+          - eval_time: 9m
+            alertname: MetricsSourceFailing
+            exp_alerts:
+                - exp_labels:
+                      severity: warning
+                      job: app
+                      source: requests
+                  exp_annotations:
+                      summary: The requests module's metrics fail; its own alerts cannot fire.
+                      runbook: docs/runbooks/application.md#metricssourcefailing
+
+    # No worker takes jobs: the oldest job ages past ten minutes.
+    - interval: 1m
+      input_series:
+          - series: 'platform_queue_oldest_job_age_seconds{job="app",queue="notifications"}'
+            values: '0+60x20'
+      alert_rule_test:
+          - eval_time: 12m
+            alertname: QueueStalled
+            exp_alerts: []
+          - eval_time: 17m
+            alertname: QueueStalled
+            exp_alerts:
+                - exp_labels:
+                      severity: critical
+                      job: app
+                      queue: notifications
+                  exp_annotations:
+                      summary: The oldest job on notifications has waited over 10 minutes.
+                      runbook: docs/runbooks/application.md#queuestalled
+
+    # Tampering is critical at once: no `for`.
+    - interval: 1m
+      input_series:
+          - series: 'platform_audit_chain_ok{job="app"}'
+            values: '1 1 0 0'
+      alert_rule_test:
+          - eval_time: 1m
+            alertname: AuditChainBroken
+            exp_alerts: []
+          - eval_time: 2m
+            alertname: AuditChainBroken
+            exp_alerts:
+                - exp_labels:
+                      severity: critical
+                      job: app
+                  exp_annotations:
+                      summary: The audit trail's hash chain does not verify; records were altered or removed.
+                      runbook: docs/runbooks/data.md#auditchainbroken
+
+    # A message given up: its effect did not happen.
+    - interval: 1m
+      input_series:
+          - series: 'platform_outbox_messages{job="app",status="dead"}'
+            values: '0 0 1 1'
+      alert_rule_test:
+          - eval_time: 1m
+            alertname: OutboxMessagesDead
+            exp_alerts: []
+          - eval_time: 2m
+            alertname: OutboxMessagesDead
+            exp_alerts:
+                - exp_labels:
+                      severity: critical
+                      job: app
+                      status: dead
+                  exp_annotations:
+                      summary: Outbox messages were given up and their effects did not happen.
+                      runbook: docs/runbooks/application.md#outboxmessagesdead

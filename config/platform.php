@@ -264,6 +264,10 @@ return [
         'restore' => [
             // A separate, disposable database; never the application's own.
             'database' => env('RESTORE_DB_DATABASE', 'engineering_template_restore'),
+            // Another PostgreSQL server (a recovery host); empty: the
+            // application's own server.
+            'host' => env('RESTORE_DB_HOST'),
+            'port' => env('RESTORE_DB_PORT'),
             'username' => env('RESTORE_DB_USERNAME'),
             'password' => env('RESTORE_DB_PASSWORD'),
             // Private identities, needed only for a restore.
@@ -286,6 +290,8 @@ return [
         'users' => (int) env('PERF_USERS', 1000),
         'audit_events' => (int) env('PERF_AUDIT_EVENTS', 50000),
         'requests' => (int) env('PERF_REQUESTS', 10000),
+        // Requests DrillSeeder makes for a restore drill (operations.yml).
+        'drill_requests' => (int) env('DRILL_REQUESTS', 300),
     ],
 
 ];

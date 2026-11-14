@@ -1,0 +1,222 @@
+name: operations
+
+# What a target host must prove, rehearsed on disposable runners
+# (Phase 10 follow-ups; docs/operations/recovery.md, monitoring.md): a
+# restore drill onto a separate database server, point-in-time recovery,
+# and the alerting rules checked and scraped by Prometheus itself. Never
+# against a real server.
+
+on:
+  push:
+    branches:
+      - main
+      - 'phase-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operations-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Backup on one PostgreSQL server, restore drill on another: encrypted
+  # with three fresh age keys, data made through the application's own
+  # actions (DrillSeeder).
+  restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: engineering_template
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # The recovery host: a different server, empty but for its database.
+      recovery:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: engineering_template_restore
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: engineering_template
+      DB_USERNAME: postgres
+      DB_PASSWORD: ci-only-not-a-secret
+      BACKUP_DB_USERNAME: postgres
+      BACKUP_DB_PASSWORD: ci-only-not-a-secret
+      RESTORE_DB_HOST: 127.0.0.1
+      RESTORE_DB_PORT: 5433
+      RESTORE_DB_DATABASE: engineering_template_restore
+      RESTORE_DB_USERNAME: postgres
+      RESTORE_DB_PASSWORD: ci-only-not-a-secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql
+          tools: composer:v2
+          coverage: none
+
+      # pg_dump and pg_restore of the server's major version; age from the
+      # Ubuntu archive.
+      - name: PostgreSQL 18 client and age
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -yq postgresql-client-18 age
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Install
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Three fresh key pairs (database, files, secrets)
+        run: |
+          keys="$RUNNER_TEMP/keys"; mkdir -p "$keys"
+          echo "BACKUP_DIR=$RUNNER_TEMP/backups" >> "$GITHUB_ENV"
+          for class in database files secrets; do
+            age-keygen -o "$keys/$class.agekey" 2>/dev/null
+            upper=$(echo "$class" | tr a-z A-Z)
+            echo "BACKUP_RECIPIENT_$upper=$(age-keygen -y "$keys/$class.agekey")" >> "$GITHUB_ENV"
+            echo "BACKUP_IDENTITY_$upper=$keys/$class.agekey" >> "$GITHUB_ENV"
+          done
+
+      - name: Data made through the application
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=DrillSeeder --force
+          php artisan platform:outbox-relay
+          php artisan queue:work --queue=files,outbox,notifications,default --stop-when-empty
+          php artisan platform:audit-verify
+          psql "postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/engineering_template" -Atc \
+            "select 'requests ' || count(*) from approval_requests union all select 'files ' || count(*) from stored_files union all select 'audit ' || count(*) from audit_events union all select 'notifications ' || count(*) from notifications"
+
+      - name: Backup (encrypted)
+        run: php artisan platform:backup manual
+
+      - name: Restore drill on the recovery host
+        run: |
+          php artisan platform:restore-drill | tee drill.txt
+          grep -q 'PASSED' drill.txt
+          echo "::notice::$(grep -m1 'PASSED' drill.txt)"
+
+  # Base backup, WAL archive, a mistake, and recovery to the moment before.
+  pitr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Point-in-time recovery rehearsal
+        run: bash scripts/ci/pitr-rehearsal.sh
+
+  # promtool checks and unit-tests the rules; a real Prometheus loads them
+  # and scrapes the application's /metrics.
+  alert-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Check and unit-test the rules
+        run: |
+          docker run --rm -v "$PWD/deploy/monitoring:/rules:ro" --entrypoint promtool \
+            prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996 \
+            check rules /rules/alerts.yml
+          docker run --rm -v "$PWD/deploy/monitoring:/rules:ro" -w /rules --entrypoint promtool \
+            prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996 \
+            test rules alerts.test.yml
+
+      - name: Application serving /metrics
+        run: |
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --force
+          nohup php artisan serve --host=127.0.0.1 --port=8000 > serve.log 2>&1 &
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8000/up >/dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8000/metrics | grep -E '^(platform_up|platform_metrics_source_up|module_requests_)'
+
+      - name: Prometheus loads the rules and scrapes the application
+        run: |
+          cat > prometheus.yml <<'YAML'
+          global:
+            scrape_interval: 5s
+            evaluation_interval: 5s
+          rule_files:
+            - /etc/prometheus/rules/alerts.yml
+          scrape_configs:
+            - job_name: app
+              static_configs:
+                - targets: ['127.0.0.1:8000']
+          YAML
+          docker run -d --name prometheus --network host \
+            -v "$PWD/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            -v "$PWD/deploy/monitoring:/etc/prometheus/rules:ro" \
+            prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+          for _ in $(seq 1 30); do
+            up=$(curl -s 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22app%22%7D' | python3 -c "import json,sys; r=json.load(sys.stdin)['data']['result']; print(r[0]['value'][1] if r else '')")
+            [ "$up" = "1" ] && break; sleep 2
+          done
+          [ "$up" = "1" ] || { docker logs prometheus | tail -30; echo "::error::Prometheus could not scrape the application"; exit 1; }
+          python3 - <<'PY'
+          import json, urllib.request
+          def get(path):
+              return json.load(urllib.request.urlopen('http://127.0.0.1:9090' + path))['data']
+          groups = get('/api/v1/rules')['groups']
+          rules = [r for g in groups for r in g['rules']]
+          bad = [r['name'] for r in rules if r.get('health') != 'ok' and r.get('lastError')]
+          series = get('/api/v1/query?query=count(%7B__name__%3D~%22platform_.*%7Cmodule_.*%22%7D)')['result']
+          print(f"{len(groups)} rule groups, {len(rules)} alerts loaded; {series[0]['value'][1]} application series scraped")
+          if bad:
+              raise SystemExit(f"rules with errors: {bad}")
+          print(f"::notice::Prometheus loaded {len(rules)} alerts without error and scraped the application")
+          PY
