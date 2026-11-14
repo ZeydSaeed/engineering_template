@@ -1,0 +1,47 @@
+Phase 10 follow-ups (owner's approval 2026-11-14: all five items, except what
+cannot be done; never touch External_Link, locally or on its server)
+=========================================================================
+
+Batch A: documents and reflow (items 1 and 2)
+----------------------------------------------
+
+Item 2, reflow
+- tests/browser/reflow.spec.ts: every page (3 guest, 12 signed in) at 320
+  CSS px in Arabic and English; fails on any visible element outside the
+  screen that cannot be scrolled to (pages.spec.ts only checked page-level
+  sideways scrolling, which a clipped element does not cause).
+- Before the fix (Chromium): 2 failed, 28 passed: /admin/users and
+  /requests in Arabic, "div -6..304 | button -6..22", the pagination.
+- Fix: TablePagination's page size and page buttons are two groups that
+  wrap (flex-wrap); after it: 30/30.
+
+Found by the same batch's full run: WCAG 2.5.3 (label in name)
+- axe flagged the users table's "details" buttons at tablet width in
+  Arabic (label-content-name-mismatch): visible "التفاصيل", accessible name
+  "تفاصيل Person 01", which does not contain the visible word, so speech
+  input by that word fails. It failed the same way with the old pagination
+  (checked by putting it back), so the pagination change did not cause it;
+  why axe reports it only now and only at tablet width was not determined.
+  Fix: the Arabic name now starts with the visible word ("التفاصيل:
+  :name"). Every other "<word> :name" label checked: the visible word is in
+  each.
+
+Item 1, documents corrected
+- docs/architecture/README.md: status as of Phase 9; the platform's folders
+  as they are; the Planned list replaced by where each concern is decided
+  and described.
+- docs/standards/security.md: files, supply chain, DAST and security
+  alerts as implemented; Planned now only what is not (passkey audit
+  records, authenticated active DAST, removing style-src 'unsafe-inline').
+- docs/standards/database.md: lock_version implemented (Requests).
+- docs/operations/capacity.md: the Phase 3 throughput replaced by the
+  corrected Phase 9 measurement, with the reason.
+
+Gates
+- composer ci:check: 315 passed, 38 skipped; PHPStan 0; deptrac 0.
+- Bundle base 184.3 kB.
+- reflow, data, requests and pages specs: Chromium 236 + 2 failed, Firefox
+  236 + 2, WebKit 235 + 3 before the label fix (the 2 were the label; WebKit's
+  third was a screenshot timeout); after it, the affected tests (pages
+  /admin/users and /settings/security in every variant, reflow, users
+  table): 78/78 in each engine. The full matrix runs in CI.

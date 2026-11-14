@@ -1,6 +1,7 @@
 # Database standards (PostgreSQL)
 
-Status: implemented and tested as of Phase 2, except where marked Planned.
+Status: implemented and tested; the conventions are checked on every table,
+including the Requests module's (PostgresConventionsTest; reviewed in Phase 10).
 
 ## Roles (ADR-0012)
 
@@ -48,7 +49,8 @@ reset tokens expired at once. Checked by `PostgresConventionsTest`.
 
 Actions own transactions (`DB::transaction(fn, 3)`), lock the aggregate root
 with `lockForUpdate()`, re-check state under the lock, and keep a fixed lock
-order. User edits carry a `lock_version` (Planned with the first module).
+order. User edits carry a `lock_version`, checked on save (the Requests
+module, ADR-0033).
 
 ## Tests
 

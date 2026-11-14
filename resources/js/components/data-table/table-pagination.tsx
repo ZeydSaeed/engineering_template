@@ -15,7 +15,9 @@ const PAGE_SIZES = [10, 25, 50, 100];
 
 /**
  * Where the table is (rows x-y of n, page p of q), page size, and
- * previous/next. Arrows mirror in right-to-left languages.
+ * previous/next. Arrows mirror in right-to-left languages. The page size
+ * and the page buttons are two groups that wrap onto their own lines on a
+ * narrow screen, never off it (WCAG 1.4.10; reflow.spec.ts).
  */
 export default function TablePagination({
     meta,
@@ -46,52 +48,59 @@ export default function TablePagination({
                       })}
             </p>
 
-            <div className="flex items-center gap-2">
-                <label htmlFor={sizeId} className="text-muted-foreground">
-                    {t('Rows per page')}
-                </label>
-                <Select
-                    value={String(perPage)}
-                    onValueChange={(value) => onPerPage(Number(value))}
-                >
-                    <SelectTrigger id={sizeId} className="w-20">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {PAGE_SIZES.map((size) => (
-                            <SelectItem key={size} value={String(size)}>
-                                {size}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex items-center gap-2">
+                    <label htmlFor={sizeId} className="text-muted-foreground">
+                        {t('Rows per page')}
+                    </label>
+                    <Select
+                        value={String(perPage)}
+                        onValueChange={(value) => onPerPage(Number(value))}
+                    >
+                        <SelectTrigger id={sizeId} className="w-20">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PAGE_SIZES.map((size) => (
+                                <SelectItem key={size} value={String(size)}>
+                                    {size}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={meta.page <= 1}
-                    onClick={() => onPage(meta.page - 1)}
-                    aria-label={t('Previous page')}
-                    data-test="previous-page"
-                >
-                    <ChevronLeft className="rtl:-scale-x-100" aria-hidden />
-                </Button>
-                <span className="whitespace-nowrap">
-                    {t('Page :page of :last', {
-                        page: meta.page,
-                        last: meta.last_page,
-                    })}
-                </span>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={meta.page >= meta.last_page}
-                    onClick={() => onPage(meta.page + 1)}
-                    aria-label={t('Next page')}
-                    data-test="next-page"
-                >
-                    <ChevronRight className="rtl:-scale-x-100" aria-hidden />
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={meta.page <= 1}
+                        onClick={() => onPage(meta.page - 1)}
+                        aria-label={t('Previous page')}
+                        data-test="previous-page"
+                    >
+                        <ChevronLeft className="rtl:-scale-x-100" aria-hidden />
+                    </Button>
+                    <span className="whitespace-nowrap">
+                        {t('Page :page of :last', {
+                            page: meta.page,
+                            last: meta.last_page,
+                        })}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={meta.page >= meta.last_page}
+                        onClick={() => onPage(meta.page + 1)}
+                        aria-label={t('Next page')}
+                        data-test="next-page"
+                    >
+                        <ChevronRight
+                            className="rtl:-scale-x-100"
+                            aria-hidden
+                        />
+                    </Button>
+                </div>
             </div>
         </nav>
     );
