@@ -1,7 +1,12 @@
 # Backup and recovery
 
 Status: logical backups and restore drills implemented and verified locally
-(docs/evidence/phase-6). Point-in-time recovery: Planned, NOT TESTED.
+(docs/evidence/phase-6), and on every push in CI (`operations.yml`): a
+backup encrypted with three fresh keys, restored by the drill onto a
+separate PostgreSQL server (`RESTORE_DB_HOST`, `RESTORE_DB_PORT`).
+Point-in-time recovery: the mechanism rehearsed in CI
+(`scripts/ci/pitr-rehearsal.sh`); pgBackRest on a target host: Planned,
+NOT TESTED.
 
 ## Objectives (initial; each application sets its own)
 
@@ -69,9 +74,18 @@ output in the operations log. A backup is good only once a drill passed.
 6. Restore secrets: `age -d -i secrets.agekey secrets.tar.age | tar -xf - -C <app root>`; rotate any secret that may have leaked with the old host.
 7. `php artisan platform:health`, `platform:audit-verify`, then open traffic.
 
-## Point-in-time recovery (Planned, NOT TESTED)
+## Point-in-time recovery
 
-On the target Linux host: pgBackRest with WAL archiving to object storage,
-a full backup weekly, differentials daily, encrypted repository. Not enabled
-on the local development server, where `archive_mode` would apply to every
-database on it.
+Rehearsed on every push (`scripts/ci/pitr-rehearsal.sh`, in a disposable
+CI runner): a PostgreSQL 18 server archiving its WAL, a base backup, rows
+written, the target time noted, every row deleted (the mistake), then a
+fresh server from the base backup replaying the archive to the target time
+(`restore_command`, `recovery_target_time`, `recovery_target_action =
+promote`). It passes only with the rows written before the target and none
+of the mistake.
+
+On the target Linux host (Planned, NOT TESTED): pgBackRest with WAL
+archiving to object storage, a full backup weekly, differentials daily, an
+encrypted repository; the recovery settings are the same. Not enabled on
+the local development server, where `archive_mode` would apply to every
+database on it (the server holds other projects' databases too).

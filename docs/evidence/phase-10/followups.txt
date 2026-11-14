@@ -45,3 +45,47 @@ Gates
   third was a screenshot timeout); after it, the affected tests (pages
   /admin/users and /settings/security in every variant, reflow, users
   table): 78/78 in each engine. The full matrix runs in CI.
+
+Batch B: recovery and monitoring, rehearsed in CI (items 3 and part of 5)
+-------------------------------------------------------------------------
+
+Why in CI: the local PostgreSQL server also holds other projects'
+databases (one of them a copy of a production system), so nothing
+cluster-wide (WAL archiving, restarts) is done on it; and creating the
+local drill database needs the server's superuser, which this session
+does not hold. A disposable GitHub runner is a separate machine with its
+own servers and nothing to harm.
+
+operations.yml, on every push (runs on commit fab7b1c and its fixes):
+- restore-drill: migrations; DrillSeeder (300 requests made through the
+  module's actions, 100 files, audit records, outbox, notifications);
+  outbox relay and queue worked; audit chain verified; encrypted backup
+  with three fresh age key pairs; platform:restore-drill onto a second
+  PostgreSQL 18 server (port 5433, RESTORE_DB_HOST/PORT, new). Result:
+    Restore drill passed: restore 0.3 s, total 0.3 s, backup age 0 h.
+    ok  artifact checksums match the manifest
+    ok  database restored (0.3 s)
+    ok  row counts match in 19 tables
+    ok  audit chain intact up to the manifest head
+    ok  100 stored files restored with matching SHA-256
+    ok  secrets decrypt with their own key
+- pitr (scripts/ci/pitr-rehearsal.sh): base backup, 500 rows after it,
+  target time, every row deleted, recovery of a fresh server to the
+  target: "PITR rehearsal PASSED: recovered to <target> in 1 s, 1500 rows,
+  the deletion undone", in every run of the batch.
+- alert-rules: promtool check rules; promtool test rules (six cases:
+  RequestsWaitingLong fires after its hour and never on 0;
+  MetricsSourceFailing after 5 min; QueueStalled after 600 s + 5 min;
+  AuditChainBroken and OutboxMessagesDead at once); a real Prometheus
+  3.5.0 loaded 21 alerts without error and scraped the application.
+
+Defects found on the way (in the new workflow, not the application)
+- The first scrape query reached Prometheus before it answered.
+- The runner image's PostgreSQL packages cannot be upgraded to the 18
+  client (postgresql-common and libpq-dev both ship pg_config): the drill
+  runs pg_dump and pg_restore from the pinned postgres:18.2 image.
+- AUDIT_HMAC_KEY was not set on the runner: the audit trail refused to
+  write, as designed; a fresh key per run.
+- The workflow looked for "PASSED"; the drill prints "Restore drill
+  passed".
+Images run by CI scripts are now pinned by digest too (CiWorkflowsTest).

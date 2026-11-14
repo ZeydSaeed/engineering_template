@@ -1,8 +1,12 @@
 # Monitoring
 
 Decision: ADR-0023. Status: endpoints, metrics, alert rules and runbooks
-implemented and tested locally. The Prometheus/Alertmanager stack itself and
-the exporters run on the target host: Planned, NOT TESTED.
+implemented and tested locally. In CI (`operations.yml`), Prometheus's own
+`promtool` checks the rules and runs their unit tests
+(`deploy/monitoring/alerts.test.yml`: each alert fires when it should and
+not before its `for`), and a real Prometheus loads every rule and scrapes
+the application's `/metrics`. Alertmanager, its receivers and the host
+exporters run on the target host: Planned, NOT TESTED.
 
 ## Endpoints
 
