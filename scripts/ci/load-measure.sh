@@ -49,14 +49,18 @@ k6() { # script, extra -e arguments...
         "$K6_IMAGE" run --quiet --summary-export "/out/$script.json" \
         -e BASE_URL=https://template.test -e USERS_CSV=/out/users.csv "$@" "/scripts/$script.js" \
         > "$OUT/$script.log" 2>&1 || {
-        tail -40 "$OUT/$script.log"
+        # Failed checks (with their share), crossed thresholds and errors.
+        grep -E '✗|↳|level=(error|warning)' "$OUT/$script.log" | head -n 20 \
+            | while IFS= read -r line; do echo "::error title=k6 $script ($LABEL)::$line"; done
         echo "::error title=k6 $script ($LABEL)::thresholds crossed or run failed"
-        return 1
+        failures=$((failures + 1))
     }
 }
+failures=0
 
 # Every page once, so views and caches are warm.
 k6 requests --vus 1 --iterations 1 -e STAFF_VUS=1
+[ "$failures" -eq 0 ] || exit 1
 k6 baseline -e VISITOR_VUS=30 -e STAFF_VUS=20 -e HOLD=2m
 k6 requests -e STAFF_VUS=20 -e APPROVER_VUS=5 -e HOLD=2m
 
@@ -65,7 +69,11 @@ python3 - "$OUT" "$LABEL" <<'PY'
 import json, sys
 out, label = sys.argv[1], sys.argv[2]
 for script in ("baseline", "requests"):
-    m = json.load(open(f"{out}/{script}.json"))["metrics"]
+    try:
+        m = json.load(open(f"{out}/{script}.json"))["metrics"]
+    except (OSError, ValueError):
+        print(f"::warning title=load {script} {label}::no summary")
+        continue
     def get(name, key):
         return m.get(name, {}).get(key, 0)
     line = (
@@ -78,3 +86,5 @@ for script in ("baseline", "requests"):
     print(line)
     print(f"::notice title=load {script} {label}::{line}")
 PY
+
+[ "$failures" -eq 0 ]
