@@ -146,9 +146,14 @@ jobs:
 
       - name: Restore drill on the recovery host
         run: |
-          php artisan platform:restore-drill | tee drill.txt
-          grep -q 'PASSED' drill.txt
-          echo "::notice::$(grep -m1 'PASSED' drill.txt)"
+          status=0
+          php artisan platform:restore-drill > drill.txt 2>&1 || status=$?
+          cat drill.txt
+          if [ "$status" -ne 0 ] || ! grep -q 'PASSED' drill.txt; then
+            tail -n 20 drill.txt | while IFS= read -r line; do echo "::error title=restore drill::$line"; done
+            exit 1
+          fi
+          grep -E 'PASSED|restored|rows|files|audit|secrets' drill.txt | head -n 8 | while IFS= read -r line; do echo "::notice title=restore drill::$line"; done
 
   # Base backup, WAL archive, a mistake, and recovery to the moment before.
   pitr:
