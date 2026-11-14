@@ -193,3 +193,14 @@
         }
     }
 }
+
+/* Windows high contrast (forced colors) drops box-shadows, and with them
+   every focus ring drawn as one (focus-visible:ring-*): an outline in the
+   system highlight colour shows focus there (WCAG 2.4.7; assistive.spec.ts).
+   Unlayered, so it wins over the outline-none utilities. */
+@media (forced-colors: active) {
+    :focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+}

@@ -89,3 +89,28 @@ Defects found on the way (in the new workflow, not the application)
 - The workflow looked for "PASSED"; the drill prints "Restore drill
   passed".
 Images run by CI scripts are now pinned by digest too (CiWorkflowsTest).
+
+Batch F: what can be automated of the manual checks (item 4)
+-------------------------------------------------------------
+
+tests/browser/assistive.spec.ts
+- Keyboard only, Arabic and English, seven main pages, three engines:
+  Tab from the top until focus leaves the page; every stop must show a
+  focus indicator (outline or ring) and focus must never be trapped.
+  Passed everywhere, nothing to fix.
+- Windows high contrast (forced colors, emulated in Chromium): before the
+  fix, focus was invisible on nearly every control of every page (buttons,
+  links, fields, table controls): their rings are box-shadows, which forced
+  colors removes, and outline-none hides the outline. Fix (resources/css/
+  app.css): an unlayered rule draws a 2 px Highlight outline on
+  :focus-visible in forced colors only. After it: 21/21 in Chromium; Firefox
+  and WebKit 14/14 (the forced-colors cases run in Chromium only).
+- A first version clicked (1, 1) to start from the top; in Arabic that
+  point is the end of the page and Firefox starts tabbing there (3 stops,
+  "nothing to tab to"). The test now starts from the document's top.
+
+docs/design-system/manual-tests.md: keyboard, reflow and high contrast
+rows say what is automated and what still needs a person. Still NOT
+TESTED and needing a person: screen readers (NVDA, VoiceOver), speech
+input, real phones and tablets, real Safari, real Windows contrast themes
+and chart columns in them.
