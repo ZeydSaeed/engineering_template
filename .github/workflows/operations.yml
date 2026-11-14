@@ -114,6 +114,8 @@ jobs:
         run: |
           keys="$RUNNER_TEMP/keys"; mkdir -p "$keys"
           echo "BACKUP_DIR=$RUNNER_TEMP/backups" >> "$GITHUB_ENV"
+          # The audit chain's key, fresh for this run (records need it).
+          echo "AUDIT_HMAC_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           for class in database files secrets; do
             age-keygen -o "$keys/$class.agekey" 2>/dev/null
             upper=$(echo "$class" | tr a-z A-Z)
