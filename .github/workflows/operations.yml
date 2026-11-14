@@ -98,8 +98,13 @@ jobs:
             fi
           }
           run sudo apt-get update -q
-          run sudo apt-get install -yq postgresql-common
-          run sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          # The runner image already carries the PostgreSQL project's
+          # packages; add them only if not (upgrading postgresql-common
+          # over them breaks libpq-dev).
+          if ! apt-cache show postgresql-client-18 > /dev/null 2>&1; then
+            run sudo apt-get install -yq postgresql-common
+            run sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          fi
           run sudo apt-get install -yq postgresql-client-18
           run sudo apt-get install -yq age
           echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
