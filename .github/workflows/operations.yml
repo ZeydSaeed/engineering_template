@@ -255,3 +255,52 @@ jobs:
               raise SystemExit(f"rules with errors: {bad}")
           print(f"::notice::Prometheus loaded {len(rules)} alerts without error and scraped the application")
           PY
+
+  # The release on a Linux server from the deploy/ templates with
+  # PostgreSQL 18, measured with k6: connecting directly (a connection per
+  # request) and through PgBouncer (ADR-0017). The load generator shares
+  # the 4-vCPU runner: the figures compare the two, they are no capacity.
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        pooler: [none, pgbouncer]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Build the release
+        run: bash scripts/release/build.sh dist
+
+      - name: Prepare the runner as a server (PostgreSQL 18, pooler ${{ matrix.pooler }})
+        env:
+          APP_DB: pgsql
+          POOLER: ${{ matrix.pooler }}
+          PLATFORM_SERVER_TIMING: 'true'
+        run: bash scripts/ci/server-setup.sh
+
+      - name: Deploy
+        run: |
+          sudo SMOKE_HOST=template.test RELOAD="systemctl reload php8.5-fpm" \
+            bash scripts/deploy/deploy.sh "dist/engineering-template-$GITHUB_SHA.tar.gz"
+
+      - name: Measure
+        run: bash scripts/ci/load-measure.sh ${{ matrix.pooler == 'none' && 'direct' || 'pgbouncer' }}
+

@@ -9,7 +9,15 @@
 # For disposable CI runners only: it installs packages, creates a user and
 # writes to /etc and /srv. It refuses to run anywhere else.
 #
+# The database is SQLite unless APP_DB=pgsql: then PostgreSQL 18 on this
+# runner, one owner role for the application, and with POOLER=pgbouncer
+# the application connects through PgBouncer (transaction pooling) instead
+# of opening a connection per request (ADR-0017; the load job in
+# operations.yml measures both). PLATFORM_SERVER_TIMING=true adds the
+# Server-Timing header the load scripts read.
+#
 #   scripts/ci/server-setup.sh
+#   APP_DB=pgsql POOLER=pgbouncer scripts/ci/server-setup.sh
 #   sudo scripts/deploy/deploy.sh dist/engineering-template-<sha>.tar.gz
 set -euo pipefail
 
@@ -35,6 +43,8 @@ APP=template
 HOST=${APP_HOST:-template.test}
 PHP=${PHP_VERSION:-8.5}
 BASE=/srv/$APP
+APP_DB=${APP_DB:-sqlite}
+POOLER=${POOLER:-none}
 
 # PHP-FPM and its CLI from the same packages (so both have the same
 # extensions), with the extensions the application uses; Nginx.
@@ -60,6 +70,49 @@ sudo apt-get install -y -qq --no-install-recommends nginx "php$PHP-fpm" \
 PHP_CLI=/usr/bin/php$PHP
 "$PHP_CLI" -m | grep -qi pdo_sqlite
 
+# PostgreSQL 18 (and PgBouncer) from the PostgreSQL project's packages.
+if [ "$APP_DB" = "pgsql" ]; then
+    # The runner image may already carry these packages; adding them again
+    # upgrades postgresql-common over libpq-dev and breaks it.
+    if ! apt-cache show postgresql-18 > /dev/null 2>&1; then
+        retry sudo apt-get install -y -qq postgresql-common
+        retry sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y > /dev/null
+    fi
+    # The image's libpq-dev cannot follow libpq5 to a newer release (it and
+    # postgresql-common both ship pg_config); nothing here needs it.
+    sudo apt-get remove -y -qq libpq-dev > /dev/null 2>&1 || true
+    sudo apt-get install -y -qq --no-install-recommends postgresql-18 "php$PHP-pgsql"
+    [ "$POOLER" = "pgbouncer" ] && sudo apt-get install -y -qq --no-install-recommends pgbouncer
+    sudo service postgresql start
+    DB_PASSWORD=$(openssl rand -hex 24)
+    sudo -u postgres psql -v ON_ERROR_STOP=1 -q <<SQL
+CREATE ROLE ${APP}_owner LOGIN PASSWORD '$DB_PASSWORD';
+CREATE DATABASE $APP OWNER ${APP}_owner;
+SQL
+    DB_PORT=5432
+    if [ "$POOLER" = "pgbouncer" ]; then
+        # Transaction pooling; prepared statements tracked by PgBouncer (1.21+).
+        sudo tee /etc/pgbouncer/pgbouncer.ini > /dev/null <<INI
+[databases]
+$APP = host=127.0.0.1 port=5432 dbname=$APP
+
+[pgbouncer]
+listen_addr = 127.0.0.1
+listen_port = 6432
+auth_type = scram-sha-256
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+max_prepared_statements = 200
+default_pool_size = 20
+max_client_conn = 500
+INI
+        echo "\"${APP}_owner\" \"$DB_PASSWORD\"" | sudo tee /etc/pgbouncer/userlist.txt > /dev/null
+        sudo chown postgres:postgres /etc/pgbouncer/userlist.txt && sudo chmod 600 /etc/pgbouncer/userlist.txt
+        sudo service pgbouncer restart
+        DB_PORT=6432
+    fi
+fi
+
 grep -q " $HOST\$" /etc/hosts || echo "127.0.0.1 $HOST" | sudo tee -a /etc/hosts > /dev/null
 
 # The application's own user, owning its release and shared directories.
@@ -82,8 +135,9 @@ APP_KEY=$APP_KEY
 APP_URL=https://$HOST
 LOG_CHANNEL=single
 LOG_LEVEL=warning
-DB_CONNECTION=sqlite
-DB_DATABASE=$BASE/shared/database/app.sqlite
+$(if [ "$APP_DB" = "pgsql" ]; then printf 'DB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=%s\nDB_DATABASE=%s\nDB_USERNAME=%s_owner\nDB_PASSWORD=%s\n' "$DB_PORT" "$APP" "$APP" "$DB_PASSWORD"; else printf 'DB_CONNECTION=sqlite\nDB_DATABASE=%s/shared/database/app.sqlite\n' "$BASE"; fi)
+PLATFORM_SERVER_TIMING=${PLATFORM_SERVER_TIMING:-false}
+DB_EMULATE_PREPARES=$([ "$POOLER" = "pgbouncer" ] && echo true || echo false)
 SESSION_DRIVER=file
 SESSION_ENCRYPT=true
 SESSION_SECURE_COOKIE=true

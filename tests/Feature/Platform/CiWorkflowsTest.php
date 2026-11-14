@@ -59,7 +59,7 @@ it('pins every container image the CI scripts run to a digest', function () {
         }
 
         // Images are named once, in a variable, and that name is pinned.
-        preg_match_all('/^[A-Z_]*IMAGE="([^"]+)"/m', $script, $images);
+        preg_match_all('/^[A-Z0-9_]*IMAGE="([^"]+)"/m', $script, $images);
         expect($images[1])->not->toBeEmpty(basename($file));
 
         foreach ($images[1] as $image) {

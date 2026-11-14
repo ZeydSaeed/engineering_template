@@ -1,9 +1,10 @@
-// Load tests run only against this machine. Any other host is refused, so a
-// typo or a copied command can never load a real server.
+// Load tests run only against this machine (HTTP, or HTTPS for the
+// production-like CI server on template.test). Any other host is refused,
+// so a typo or a copied command can never load a real server.
 export function baseUrl() {
     const url = __ENV.BASE_URL || 'http://engineering-template.test';
     const allowed =
-        /^http:\/\/([a-z0-9-]+\.test|localhost|127\.0\.0\.1)(:\d+)?$/;
+        /^https?:\/\/([a-z0-9-]+\.test|localhost|127\.0\.0\.1)(:\d+)?$/;
 
     if (!allowed.test(url)) {
         throw new Error(

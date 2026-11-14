@@ -101,6 +101,12 @@ return [
             // match config('app.timezone') (UTC), whatever the server's own
             // setting, or such times shift by the server's offset.
             'timezone' => 'UTC',
+            // Behind PgBouncer in transaction pooling (ADR-0017), statements
+            // are prepared by PDO itself: a statement prepared on the server
+            // would belong to a connection the next transaction may not get.
+            'options' => filter_var(env('DB_EMULATE_PREPARES', false), FILTER_VALIDATE_BOOLEAN)
+                ? [PDO::ATTR_EMULATE_PREPARES => true]
+                : [],
         ],
 
         'sqlsrv' => [
