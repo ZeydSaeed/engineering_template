@@ -123,11 +123,19 @@ jobs:
 
       - name: Data made through the application
         run: |
-          php artisan migrate --force
-          php artisan db:seed --class=DrillSeeder --force
-          php artisan platform:outbox-relay
-          php artisan queue:work --queue=files,outbox,notifications,default --stop-when-empty
-          php artisan platform:audit-verify
+          # Each command's last lines become annotations when it fails.
+          run() {
+            if ! out=$("$@" 2>&1); then
+              tail -n 15 <<< "$out" | while IFS= read -r line; do echo "::error title=$*::$line"; done
+              exit 1
+            fi
+            tail -n 3 <<< "$out"
+          }
+          run php artisan migrate --force
+          run php artisan db:seed --class=DrillSeeder --force
+          run php artisan platform:outbox-relay
+          run php artisan queue:work --queue=files,outbox,notifications,default --stop-when-empty
+          run php artisan platform:audit-verify
           psql "postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/engineering_template" -Atc \
             "select 'requests ' || count(*) from approval_requests union all select 'files ' || count(*) from stored_files union all select 'audit ' || count(*) from audit_events union all select 'notifications ' || count(*) from notifications"
 
