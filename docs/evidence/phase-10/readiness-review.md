@@ -168,3 +168,30 @@ Conditions: four documents state things that are no longer true.
 | 3   | Re-run the restore drill (temporary database, dropped afterwards)       | Drill PASSED, rows matching in every current table                  |
 | 4   | Manual checks by a person (screen reader, devices, contrast)            | Each row in manual-tests.md says who, when, on what, and the result |
 | 5   | On a target host: load, pooler, exporters, PITR, authenticated ZAP scan | Figures and drills recorded as for this machine                     |
+
+## After the follow-ups (2026-11-14)
+
+The owner approved all five proposals, to be done except what cannot be,
+and never touching External_Link locally or on its server. Details and
+figures: `docs/evidence/phase-10/followups.txt`. "Target host" work ran on
+disposable CI runners (`.github/workflows/operations.yml`), not on any of
+the owner's servers.
+
+| #   | Proposal                   | Done                                                                                                                                   | Left                                                                                     |
+| --- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 1   | Correct the four documents | All four corrected                                                                                                                     | —                                                                                        |
+| 2   | Reflow                     | Pagination wraps; reflow.spec.ts at 320 px for 15 pages, both languages; a label-in-name fault (WCAG 2.5.3) found and fixed on the way | —                                                                                        |
+| 3   | Restore drill              | On every push, onto a separate PostgreSQL server: 19 tables, 100 files, audit chain, secrets                                           | A drill on the owner's machine needs the database superuser to create the drill database |
+| 4   | Manual checks              | Automated what can be: keyboard in three engines; forced colors, which found focus invisible in Windows high contrast (fixed)          | Screen readers, speech input, real devices and Safari, real contrast themes: a person    |
+| 5   | Target host                | PITR rehearsed; promtool and a real Prometheus; load on Linux with and without PgBouncer; an active ZAP scan signed in                 | A real host: pgBackRest with storage, Alertmanager receivers, exporters, capacity        |
+
+Verdicts now
+
+| Area         | Status               | What changed                                                                                                        |
+| ------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Architecture | PASS                 | —                                                                                                                   |
+| Security     | PASS WITH CONDITIONS | Active signed-in DAST on every push, 0 High; conditions: staging scan, the CSP residual risk, ZAP 10024             |
+| Performance  | PASS WITH CONDITIONS | Linux figures (p50 8 to 25 ms; PgBouncer halves database time); a real host still to size                           |
+| Reliability  | PASS WITH CONDITIONS | Restore drill onto a second server and PITR proven on every push; condition: pgBackRest with storage on a real host |
+| UI           | PASS WITH CONDITIONS | Reflow and high-contrast faults fixed and tested; only person-run checks remain                                     |
+| Docs         | PASS                 | The four documents corrected; recovery, monitoring, capacity and security guides record the new evidence            |

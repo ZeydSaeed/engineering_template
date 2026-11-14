@@ -155,3 +155,59 @@ Defects found on the way (in the measurement, not the application)
 - The k6 container could not write its summary (folder permissions).
 - The scripts' 1 % failure threshold stopped the run at the 429s; CI now
   measures to the end and reports the rate.
+
+Batch E: an active ZAP scan, signed in (part of item 5)
+-------------------------------------------------------
+
+operations.yml job "zap-signed-in" (scripts/ci/zap-signed-in.sh): the
+release on a CI runner from the deploy/ templates; an administrator with
+an authenticator secret (PerformanceSeeder); sign-in with password and
+TOTP; ZAP 2.17.0 (pinned) zap-full-scan with the session on every request
+(replacer), the AJAX spider (a real browser: the Inertia pages' links are
+in page data), the sign-out address excluded, the active scan capped at 20
+minutes and paced under Nginx's per-client limit. Fails on any High alert.
+
+Runs
+- 5841cf4: the classic spider reached only /dashboard (links rendered by
+  JavaScript): the job failed on its own coverage check ("the session did
+  not hold"); fixed with the AJAX spider.
+- 0bf773c: 18 signed-in paths reached; 1 High: "SQL Injection (High,
+  Medium confidence)" on /requests; ZAP's parameter and payload were not
+  printed then.
+- Investigation: every parameter of the list is checked against its list
+  of allowed values or bound (search: LIKE with a bound pattern and
+  ESCAPE; sort and filters: allow-lists; paging: integers). A new test,
+  tests/Feature/Requests/RequestsTableInjectionTest.php, sends 9 classic
+  payloads in the search and 7 in sort, direction, filters and paging:
+  17/17 on SQLite and PostgreSQL, each treated as data (no extra rows, no
+  error). The scan now prints the parameter, attack and evidence of any
+  High alert.
+- 4cd3a18: 20 signed-in paths reached (/admin/reports, /admin/users,
+  /admin/users/invite, /dashboard, /notifications, /requests,
+  /requests/new, /settings/appearance, /settings/documents,
+  /settings/profile); 0 High alerts. The SQL injection alert did not come
+  back. Verdict: a likely false positive (ZAP infers boolean or timing
+  differences; different search texts give different rows), not proven,
+  since its evidence of the first run was not kept; the tests and the code
+  show no injection path.
+
+Alerts of the signed-in scan (all below High), with what they mean
+- 10055 CSP style-src unsafe-inline: the accepted residual risk (ADR-0016).
+- 10010 Cookie no HttpOnly: XSRF-TOKEN, read by the page by design.
+- 10044 Big redirect, 10015/10049 cache directives, 10109, 10112, 120000:
+  as classified in .zap/rules.tsv for the baseline scan.
+- 10024 Information in URL, new signed in: /admin/users?user=1, the user
+  table's side panel keeps the person's internal id in the address. Low
+  risk (an administrator's own page), but it departs from the template's
+  rule that internal ids stay out of URLs (Requests use UUIDs). Proposed:
+  the panel addresses people by a UUID. Not changed in this batch.
+
+Not done, and why
+- Real manual checks (screen readers, speech input, real devices, real
+  Safari, Windows contrast themes): need a person.
+- Anything on the owner's servers: forbidden (External_Link's server must
+  never be touched); every "target host" item above ran on disposable CI
+  runners instead. Alertmanager receivers and host exporters need a real
+  host and its alert destinations.
+- pgBackRest and object storage: need a real host and a bucket; the PITR
+  mechanism is rehearsed with PostgreSQL's own tools.
