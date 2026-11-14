@@ -123,6 +123,10 @@ for site in report.get('site', []):
         level = 'error' if risk >= 3 else 'warning'
         high += risk >= 3
         print(f"::{level} title=ZAP {alert.get('pluginid')}::{alert.get('name')} ({alert.get('riskdesc')}) {' '.join(uris)}")
+        if risk >= 3:
+            # What exactly was attacked, so a finding can be reproduced.
+            for instance in alert.get('instances', [])[:5]:
+                print(f"::error title=ZAP {alert.get('pluginid')} instance::{instance.get('method', '')} {instance.get('uri', '')} param={instance.get('param', '')} attack={instance.get('attack', '')[:200]} evidence={instance.get('evidence', '')[:200]} {instance.get('otherinfo', '')[:300]}")
 print(f"::notice title=ZAP signed in::{high} High alerts")
 sys.exit(1 if high else 0)
 PY
