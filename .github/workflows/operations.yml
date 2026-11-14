@@ -86,29 +86,22 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      # pg_dump and pg_restore of the server's major version; age from the
-      # Ubuntu archive.
-      - name: PostgreSQL 18 client and age
+      # pg_dump and pg_restore of the server's major version, from the
+      # pinned PostgreSQL image (the runner's own packages conflict when
+      # upgraded: postgresql-common and libpq-dev both ship pg_config);
+      # age from the Ubuntu archive.
+      - name: PostgreSQL 18 tools and age
         run: |
-          # Each command's last lines become annotations when it fails.
-          run() {
-            if ! out=$("$@" 2>&1); then
-              tail -n 12 <<< "$out" | while IFS= read -r line; do echo "::error title=$*::$line"; done
-              exit 1
-            fi
-          }
-          run sudo apt-get update -q
-          # The runner image already carries the PostgreSQL project's
-          # packages; add them only if not (upgrading postgresql-common
-          # over them breaks libpq-dev).
-          if ! apt-cache show postgresql-client-18 > /dev/null 2>&1; then
-            run sudo apt-get install -yq postgresql-common
-            run sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          fi
-          run sudo apt-get install -yq postgresql-client-18
-          run sudo apt-get install -yq age
-          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
-          /usr/lib/postgresql/18/bin/pg_dump --version
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"
+          for tool in pg_dump pg_restore; do
+            printf '#!/bin/sh\nexec docker run --rm -i --network host -e PGPASSWORD postgres:18.2@sha256:a688ae5c99f86c1424e046ace0de890608cc0ddb5ec8ef72a6ff8305fdc8f4d2 %s "$@"\n' "$tool" > "$bin/$tool"
+            chmod +x "$bin/$tool"
+          done
+          echo "BACKUP_PG_DUMP=$bin/pg_dump" >> "$GITHUB_ENV"
+          echo "BACKUP_PG_RESTORE=$bin/pg_restore" >> "$GITHUB_ENV"
+          docker pull --quiet postgres:18.2@sha256:a688ae5c99f86c1424e046ace0de890608cc0ddb5ec8ef72a6ff8305fdc8f4d2
+          "$bin/pg_dump" --version
+          sudo apt-get install -yq age > /dev/null
           age --version
 
       - name: Install
