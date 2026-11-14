@@ -90,11 +90,21 @@ jobs:
       # Ubuntu archive.
       - name: PostgreSQL 18 client and age
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -yq postgresql-common
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -yq postgresql-client-18 age
+          # Each command's last lines become annotations when it fails.
+          run() {
+            if ! out=$("$@" 2>&1); then
+              tail -n 12 <<< "$out" | while IFS= read -r line; do echo "::error title=$*::$line"; done
+              exit 1
+            fi
+          }
+          run sudo apt-get update -q
+          run sudo apt-get install -yq postgresql-common
+          run sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          run sudo apt-get install -yq postgresql-client-18
+          run sudo apt-get install -yq age
           echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/18/bin/pg_dump --version
+          age --version
 
       - name: Install
         run: |
@@ -202,11 +212,22 @@ jobs:
             -v "$PWD/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/deploy/monitoring:/etc/prometheus/rules:ro" \
             prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
-          for _ in $(seq 1 30); do
-            up=$(curl -s 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22app%22%7D' | python3 -c "import json,sys; r=json.load(sys.stdin)['data']['result']; print(r[0]['value'][1] if r else '')")
-            [ "$up" = "1" ] && break; sleep 2
+          # Prometheus needs a few seconds to start and scrape: an empty
+          # answer until then is not a failure.
+          up=''
+          for _ in $(seq 1 45); do
+            up=$(curl -sf 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22app%22%7D' \
+              | python3 -c "import json,sys; r=json.load(sys.stdin)['data']['result']; print(r[0]['value'][1] if r else '')" 2>/dev/null || true)
+            [ "$up" = "1" ] && break
+            sleep 2
           done
-          [ "$up" = "1" ] || { docker logs prometheus | tail -30; echo "::error::Prometheus could not scrape the application"; exit 1; }
+          if [ "$up" != "1" ]; then
+            docker logs prometheus 2>&1 | tail -n 15 | while IFS= read -r line; do echo "::error title=prometheus::$line"; done
+            curl -s 'http://127.0.0.1:9090/api/v1/targets' | head -c 1500 | while IFS= read -r line; do echo "::error title=targets::$line"; done
+            tail -n 10 serve.log | while IFS= read -r line; do echo "::error title=serve.log::$line"; done
+            echo "::error::Prometheus could not scrape the application (up=$up)"
+            exit 1
+          fi
           python3 - <<'PY'
           import json, urllib.request
           def get(path):
