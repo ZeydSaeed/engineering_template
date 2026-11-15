@@ -66,7 +66,9 @@ it('declares a pair for every text colour and every surface', function () {
 });
 
 it('paints the page background before the stylesheet in the token colour', function () {
-    $view = (string) file_get_contents(resource_path('views/app.blade.php'));
+    expect((string) file_get_contents(resource_path('views/app.blade.php')))->toContain("@include('design-system.prepaint')");
+
+    $view = (string) file_get_contents(resource_path('views/design-system/prepaint.blade.php'));
 
     foreach (DesignTokens::THEMES as $theme => $selector) {
         $background = DesignTokens::resolved($theme)['background'];

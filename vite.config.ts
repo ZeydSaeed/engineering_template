@@ -78,6 +78,7 @@ export default defineConfig({
             'docs/design-system/palette-report.md',
             'resources/css/design-system/palette.css',
             'resources/css/design-system/themes.css',
+            'resources/views/design-system/prepaint.blade.php',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
         ],

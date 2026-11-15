@@ -17,18 +17,9 @@
             })();
         </script>
 
-        {{-- The page background before the stylesheet arrives: the resolved
-             --background of each theme (resources/css/design-system/;
-             DesignTokensTest keeps them equal). --}}
-        <style>
-            html {
-                background-color: oklch(0.98 0.009 252);
-            }
-
-            html.dark {
-                background-color: oklch(0.2 0.012 252);
-            }
-        </style>
+        {{-- The page background before the stylesheet arrives: generated with
+             the palette (scripts/design-system/palette.mjs). --}}
+        @include('design-system.prepaint')
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">

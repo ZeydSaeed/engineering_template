@@ -55,6 +55,8 @@ function rawColours(string $source): array
         '/(?<![\w-])(?:bg|text|border(?:-[xytrblse])?|ring|ring-offset|outline|fill|stroke|decoration|from|via|to|divide|shadow|caret|accent|placeholder)-'.TAILWIND_PALETTE.'(?:\/\d+)?(?![\w-])/',
         // Arbitrary values with a colour literal or a palette reference.
         '/\[[^\]\s]*(?:#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|oklch\(|oklab\(|lch\(|lab\(|color-mix\()[^\]\s]*\]/',
+        // Arbitrary named colours (bg-[red], text-[white]).
+        '/(?<![\w-])(?:bg|text|border|ring|outline|fill|stroke|decoration|from|via|to|divide|shadow|caret|accent|placeholder)-\[[a-zA-Z]+\]/',
         '/(?:var\()?--palette-[a-z0-9-]+/',
         // Inline style colours.
         '/style=\{\{[^}]*\b(?:color|background(?:Color)?|border(?:Color)?|fill|stroke|outlineColor)\s*:/',
@@ -80,9 +82,9 @@ it('uses no raw colours in any component, page or view (§11)', function () {
             $source = str_replace($exception['pattern'], '', $source);
         }
 
-        // The pre-paint background, pinned to the token by DesignTokensTest.
-        if ($path === 'resources/views/app.blade.php') {
-            $source = (string) preg_replace('/background-color: oklch\([^)]*\);/', '', $source);
+        // Generated with the palette, like the CSS layers (check 9).
+        if ($path === 'resources/views/design-system/prepaint.blade.php') {
+            continue;
         }
 
         if (($found = rawColours($source)) !== []) {
