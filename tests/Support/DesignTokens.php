@@ -87,7 +87,8 @@ final class DesignTokens
         $resolved = [];
 
         foreach ($raw as $name => $value) {
-            if (str_starts_with($value, 'linear-gradient(')) {
+            // Gradients are images, checked stop by stop by the generator.
+            if (str_starts_with($name, 'gradient-')) {
                 continue;
             }
 

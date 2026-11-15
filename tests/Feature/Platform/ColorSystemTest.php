@@ -179,7 +179,8 @@ it('defines every role in every theme, and changes it on purpose (§6.3)', funct
             continue;
         }
 
-        if ($dark[$role] === $value && ! in_array($role, $invariant, true)) {
+        // Gradients are declared per theme in palette.json "gradients".
+        if ($dark[$role] === $value && ! in_array($role, $invariant, true) && ! str_starts_with($role, 'gradient-')) {
             expect($decided)->not->toBe([], "dark --{$role} copies light without an explicit palette.json role");
         }
     }
