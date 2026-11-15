@@ -8,6 +8,7 @@
   A downstream project keeps its own copy, and its header records the version it
   adopted (§16).
 - Builds on: ADR-0024 (tokens, contrast test) and ADR-0025 (shared components).
+- Decision record: ADR-0034 (`docs/decisions/0034-color-design-system.md`).
 
 This is the only full specification. `CLAUDE.md` and
 `.cursor/rules/color-design-system.mdc` point here and do not repeat it.
