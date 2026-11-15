@@ -1,0 +1,29 @@
+{
+    "version": 1,
+    "colors": {
+        "primary": { "hex": "#125CA1", "name": "Template Blue" },
+        "secondary": { "hex": null },
+        "accent": { "hex": null },
+        "neutral": { "hex": null },
+        "success": { "hex": null },
+        "warning": { "hex": null },
+        "danger": { "hex": null },
+        "info": { "hex": null }
+    },
+    "extra": {},
+    "roles": {
+        "light": {
+            "secondary": "neutral-100",
+            "accent": "neutral-100",
+            "brand-surface": "neutral-900",
+            "brand-surface-border": "neutral-800"
+        },
+        "dark": {
+            "secondary": "neutral-900",
+            "accent": "neutral-900",
+            "brand-surface": "neutral-900",
+            "brand-surface-border": "neutral-800"
+        }
+    },
+    "gradients": []
+}

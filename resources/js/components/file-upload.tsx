@@ -234,14 +234,14 @@ export default function FileUpload({
                         >
                             {item.status === 'done' && (
                                 <CircleCheck
-                                    className="size-4 text-success"
+                                    className="size-4 text-success-text"
                                     aria-hidden
                                 />
                             )}
                             {(item.status === 'failed' ||
                                 item.status === 'cancelled') && (
                                 <CircleAlert
-                                    className="size-4 text-destructive-foreground"
+                                    className="size-4 text-destructive-text"
                                     aria-hidden
                                 />
                             )}
@@ -286,14 +286,14 @@ export default function FileUpload({
                                 </span>
                             )}
                             {item.status === 'done' && (
-                                <span className="text-success">
+                                <span className="text-success-text">
                                     {t('Uploaded')}
                                 </span>
                             )}
                             {(item.status === 'failed' ||
                                 item.status === 'cancelled') && (
                                 <>
-                                    <span className="w-full text-destructive-foreground sm:w-auto">
+                                    <span className="w-full text-destructive-text sm:w-auto">
                                         {item.status === 'cancelled'
                                             ? t('Cancelled')
                                             : item.error}

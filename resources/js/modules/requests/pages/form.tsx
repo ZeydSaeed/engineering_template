@@ -60,7 +60,7 @@ export default function RequestForm({
                             {errors.lock_version && (
                                 <p
                                     role="alert"
-                                    className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+                                    className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive-text"
                                     data-test="stale-form"
                                 >
                                     {errors.lock_version}

@@ -1,0 +1,9 @@
+[
+    {
+        "path": "resources/js/components/two-factor-setup-modal.tsx",
+        "pattern": "bg-[white]",
+        "reason": "A QR code needs a white quiet zone in every theme to scan.",
+        "approved_by": "owner (allowance carried over from ADR-0024's DesignTokensTest)",
+        "date": "2026-11-15"
+    }
+]

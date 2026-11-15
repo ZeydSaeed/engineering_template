@@ -105,7 +105,7 @@ export default function InviteUser({ roles }: { roles: string[] }) {
                                     <p
                                         id="role-error"
                                         aria-live="polite"
-                                        className="text-sm text-destructive-foreground empty:hidden"
+                                        className="text-sm text-destructive-text empty:hidden"
                                     >
                                         {errors.role}
                                     </p>

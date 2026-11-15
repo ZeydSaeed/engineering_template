@@ -9,7 +9,7 @@ export default function InputError({
     return message ? (
         <p
             {...props}
-            className={cn('text-sm text-destructive-foreground', className)}
+            className={cn('text-sm text-destructive-text', className)}
         >
             {message}
         </p>

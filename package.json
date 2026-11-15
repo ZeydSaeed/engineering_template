@@ -6,8 +6,10 @@
         "build": "vp build",
         "build:ssr": "vp build && vp build --ssr",
         "dev": "vp dev",
-        "check": "vp check",
+        "check": "vp check && npm run palette:check",
         "check:fix": "vp check --fix",
+        "palette": "node scripts/design-system/palette.mjs",
+        "palette:check": "node scripts/design-system/palette.mjs --check",
         "types:check": "tsc --noEmit",
         "test:browser": "playwright test --project=chromium",
         "budget": "node scripts/bundle-budget.mjs"

@@ -71,12 +71,12 @@ export function BulkResultPanel({
             <div className="flex items-start gap-2">
                 {failed === 0 ? (
                     <CircleCheck
-                        className="mt-0.5 size-4 text-success"
+                        className="mt-0.5 size-4 text-success-text"
                         aria-hidden
                     />
                 ) : (
                     <CircleAlert
-                        className="mt-0.5 size-4 text-destructive-foreground"
+                        className="mt-0.5 size-4 text-destructive-text"
                         aria-hidden
                     />
                 )}

@@ -15,7 +15,7 @@ export default function DeleteUser() {
                 description={t('Delete your account and all of its resources')}
             />
             <div className="space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-                <div className="relative space-y-0.5 text-destructive-foreground">
+                <div className="relative space-y-0.5 text-destructive-text">
                     <p className="font-medium">{t('Warning')}</p>
                     <p className="text-sm">
                         {t(

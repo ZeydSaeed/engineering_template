@@ -62,7 +62,7 @@ export default function EmptyState({
                         className={cn(
                             'size-6',
                             kind === 'error'
-                                ? 'text-destructive-foreground'
+                                ? 'text-destructive-text'
                                 : 'text-muted-foreground',
                         )}
                         aria-hidden

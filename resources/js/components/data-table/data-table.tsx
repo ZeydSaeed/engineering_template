@@ -133,7 +133,7 @@ export default function DataTable<Row>({
                 <caption id={captionId} className="sr-only">
                     {caption}
                 </caption>
-                <thead className="bg-muted/50 text-start">
+                <thead className="bg-table-head text-start text-table-head-foreground">
                     <tr className="border-b">
                         {selectable && (
                             <th scope="col" className="w-10 px-4 py-3">
@@ -224,7 +224,7 @@ export default function DataTable<Row>({
                                 data-selected={isSelected || undefined}
                                 className={cn(
                                     'border-b last:border-b-0',
-                                    isSelected && 'bg-accent/60',
+                                    isSelected && 'bg-table-row-selected',
                                 )}
                             >
                                 {selectable && (

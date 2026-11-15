@@ -2,8 +2,8 @@
 
 - Standard: ENG-DESIGN-COLOR-001
 - Version: 1.0.0 (2026-11-15)
-- Status: Accepted. The architecture is **Planned** until the implementation
-  status table (§17) says otherwise.
+- Status: Accepted. What is built and tested is in the implementation status
+  table (§17).
 - Canonical copy: `Engineering-Template/docs/standards/COLOR-DESIGN-SYSTEM.md`.
   A downstream project keeps its own copy, and its header records the version it
   adopted (§16).
@@ -105,7 +105,11 @@ test enforces this (ADR-0024).
 - `extra` holds any further supporting colours. Each becomes a family.
 - `name` is free text, shown in the report and in CSS comments.
 - `roles` holds optional overrides of the default role mapping, per theme, e.g.
-  `"brand-surface": "primary-900"`. Anything not given uses the defaults in §6.
+  `"brand-surface": "primary-900"`. A value is a palette reference
+  (`"<family>-<step>"`, with `neutral-0` and `neutral-1000` for white and
+  black), a blend (`{ "mix": ["neutral-950", 60, "neutral-900"] }`) or a
+  translucent colour (`{ "alpha": ["neutral-1000", 80] }`). Anything not given
+  uses the defaults in §6.
 - `gradients`: see §9.
 
 **Palette configuration and role assignment are separate decisions.** Changing
@@ -151,9 +155,9 @@ When the roles were not given in `roles`, it marks them **proposed**.
 Each family produces 11 steps, `--palette-<family>-<step>`, with fixed OKLCH
 lightness targets:
 
-| Step | 50   | 100   | 200  | 300  | 400  | 500  | 600  | 700  | 800  | 900  | 950  |
-| ---- | ---- | ----- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-| L    | 0.97 | 0.935 | 0.87 | 0.79 | 0.70 | 0.61 | 0.53 | 0.45 | 0.37 | 0.29 | 0.21 |
+| Step | 50   | 100   | 200   | 300  | 400  | 500  | 600  | 700  | 800  | 900  | 950  |
+| ---- | ---- | ----- | ----- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| L    | 0.98 | 0.955 | 0.905 | 0.83 | 0.72 | 0.62 | 0.53 | 0.45 | 0.37 | 0.28 | 0.20 |
 
 It also produces `--palette-<family>-base`, the exact supplied colour.
 
@@ -165,8 +169,8 @@ It also produces `--palette-<family>-base`, the exact supplied colour.
   exact supplied colour. Its lightness differs from the target by less than half
   a step, so lightness stays monotonic. The report names the anchor step.
 - **Chroma curve.** Steps other than the anchor use
-  `C(step) = C_base × k(L)`. Here k rises from 0.35 at L 0.97 to 1.0 at the
-  anchor and falls to 0.6 at L 0.21. This keeps tints and shades from turning
+  `C(step) = C_base × k(L)`. Here k rises from 0.35 at L 0.98 to 1.0 at the
+  anchor and falls to 0.6 at L 0.20. Neutral keeps a constant chroma. This keeps tints and shades from turning
   grey or neon.
 - **Gamut.** Each step is mapped into sRGB by reducing chroma at constant L and
   H (binary search, tolerance 0.001). Lightness and hue are never moved to fit.
@@ -220,33 +224,40 @@ token per role**: no aliases, so nothing is duplicated.
 
 `X-foreground` always means "text on X". The template used to give
 `destructive-foreground` the meaning "red text on the page". That meaning moves
-to `destructive-text`, the 14 usages are migrated in G4 (§18), and
+to `destructive-text`, the usages are migrated (§18), and
 `destructive-foreground` becomes the text on a destructive button.
 
 ### 6.2 Default mapping
 
-Defaults per theme (L4). `roles` in `palette.json` may override any row.
+Defaults per theme (L4), as implemented in `scripts/design-system/palette.mjs`
+(`DEFAULTS`). **pick X from N** means: search family X outward from step N for
+the nearest step meeting the listed contrast, taking the darker step on a tie
+in light and the lighter in dark. **anchor** is the step that holds the
+owner's exact colour. **auto** is the foreground rule below. `roles` in
+`palette.json` may override any row.
 
-| Role                    | Light                                                      | Dark                                          |
-| ----------------------- | ---------------------------------------------------------- | --------------------------------------------- |
-| background              | neutral-50                                                 | neutral-950                                   |
-| foreground              | neutral-950                                                | neutral-50                                    |
-| card                    | white (`oklch(1 0 0)` via neutral-0)¹                      | neutral-900                                   |
-| popover                 | white¹                                                     | neutral-800                                   |
-| muted / secondary       | neutral-100 / secondary-100                                | neutral-800 / secondary-900                   |
-| muted-foreground        | neutral-700                                                | neutral-300                                   |
-| accent                  | primary-100                                                | primary-900                                   |
-| primary                 | primary at anchor if it carries text, else primary-600     | primary-300 or -400 (first to pass)           |
-| primary-hover / -active | one / two steps darker                                     | one / two steps lighter                       |
-| primary-subtle          | primary-50                                                 | primary-950 mixed 60% with neutral-900        |
-| brand-surface           | primary-900                                                | primary-950                                   |
-| highlight               | accent at anchor                                           | accent-400 (or the anchor if it still passes) |
-| border / border-strong  | neutral-200 / neutral-600                                  | neutral-800 / neutral-500                     |
-| ring                    | primary-600                                                | primary-300                                   |
-| status solid            | <family>-600                                               | <family>-400                                  |
-| status text             | <family>-700                                               | <family>-300                                  |
-| overlay                 | neutral-950 at 80%                                         | neutral-950 at 80%                            |
-| chart-1…5               | primary-600, secondary-500, accent-500, extra/derived hues | the 300–400 steps of the same families        |
+| Role                      | Light                                                                  | Dark                                                 |
+| ------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| background / foreground   | neutral-50 / neutral-950                                               | neutral-950 / neutral-50                             |
+| card, popover             | neutral-0 (white)¹                                                     | mix(neutral-950 60%, neutral-900), mix(950 30%, 900) |
+| card-, popover-foreground | neutral-950                                                            | neutral-50                                           |
+| muted                     | neutral-100                                                            | neutral-900                                          |
+| muted-foreground          | pick neutral from 700, text on background, card, muted                 | pick neutral from 400, same                          |
+| secondary / accent        | secondary-100 / primary-100                                            | secondary-900 / primary-900                          |
+| primary                   | pick primary from anchor, text on background and card, carries text    | pick primary from 400, same                          |
+| primary-hover / -active   | one / two steps away from the foreground's lightness                   | same                                                 |
+| primary-subtle            | primary-50                                                             | primary-950                                          |
+| brand-surface / -border   | primary-900 / primary-800                                              | primary-950 / primary-800                            |
+| highlight                 | pick accent from anchor, carries text                                  | pick accent from 400, carries text                   |
+| border                    | neutral-200                                                            | neutral-900                                          |
+| border-strong             | pick neutral from 500, 3:1 on background and card                      | pick neutral from 600, same                          |
+| ring                      | pick primary from 600, 3:1 on background and card                      | pick primary from 300, same                          |
+| destructive (danger)      | pick from 600, carries text, 3:1 on background and card                | same                                                 |
+| success / warning / info  | pick from 600 / 300 / 600, carries text                                | pick from 400 / 400 / 400                            |
+| status `-text`            | pick from 700, text on background and card                             | pick from 300, same                                  |
+| overlay                   | neutral-1000 at 80% (theme-invariant by design)                        | same                                                 |
+| chart-1…5                 | pick primary, secondary, accent, success, danger from 600, 3:1 on card | same from 400                                        |
+| every other `-foreground` | auto                                                                   | auto                                                 |
 
 ¹ L1 also provides `--palette-neutral-0` (`oklch(1 0 0)`) and
 `--palette-neutral-1000` (`oklch(0 0 0)`) so pure white and black are palette
@@ -265,16 +276,22 @@ none does, the role fails and the report names it.
   Vivid colour is kept for small elements: buttons, focus, status.
 - Brand solids move to lighter steps, so a text colour that worked on the light
   primary is chosen again and not copied.
-- Every role is listed separately in each theme block. A theme block that copies
-  every value from light fails the theme-consistency check (§12, check 6) unless
-  `roles` says so explicitly for that role.
+- Every role is listed separately in each theme block. A dark role identical to
+  its light value fails the theme-consistency check (§12, check 6) unless
+  `roles` sets it (or, for a `-foreground`, sets its surface) explicitly, the
+  surface underneath differs, or the role is theme-invariant by design
+  (`overlay`).
 
 ### 6.4 Further themes
 
-A theme is an L2 block under `[data-theme='<name>']` (and `.dark` keeps its
-class for Tailwind's `dark:` variant). It must define every L2 token. Themes are
-listed in `palette.json` under `themes` (default `["light", "dark"]`), and every
-check runs for every listed theme.
+A theme is an L2 block under its own selector (`:root` is light, `.dark` is
+dark and keeps Tailwind's `dark:` variant; a further theme would use
+`[data-theme='<name>']`). It must define every L2 token. Implemented: light and
+dark. A further theme is added to `THEME_SELECTORS` and `DEFAULTS` in the
+generator and to `DesignTokens::THEMES` in the tests (Proposed; none yet).
+
+The theme selector must be on the root element (`<html>`), where L3 tokens are
+declared: a custom property resolves `var()` on the element that declares it.
 
 ## 7. Component layer (L3)
 
@@ -349,7 +366,10 @@ Gradients are tokens, declared in `palette.json`:
 - Contrast is computed exactly as `DesignTokensTest` already does: OKLCH to
   linear sRGB, clipped, then the WCAG relative luminance. Pairs with alpha are
   composited over their declared surface first.
-- **Declared pairs.** The tests check an explicit list of pairs, per theme:
+- **Declared pairs** are listed in `resources/design-system/pairs.json`
+  (`fg`, `bg`, `min`, and `over` for a translucent `bg`). The generator refuses
+  to write CSS that fails one, and `DesignTokensTest` checks them per theme.
+  The list covers:
     - every `X` / `X-foreground`
     - every `X-text` on `background` and on `card`
     - `muted-foreground` on `background`, `card` and `muted`
@@ -358,8 +378,9 @@ Gradients are tokens, declared in `palette.json`:
     - every gradient stop
     - every L3 text pair
 
-    A new pairing in a component means a new declared pair in the test, in the
-    same change.
+    A new pairing in a component means a new entry in `pairs.json`, in the
+    same change. A test also requires a pair for every `X-foreground` on `X`
+    and every `X-text` on `background`.
 
 - **Colour is never the only signal.** Status badges, validation errors, chart
   series and table states also carry text, an icon or a pattern. Links in body
@@ -393,21 +414,21 @@ Gradients are tokens, declared in `palette.json`:
 
 ## 12. Automated validation
 
-| #   | Check                 | How                                                                                                                                                                                                  |
-| --- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Hardcoded UI colours  | `ColorSystemTest`: scans `resources/js/**/*.tsx`, `resources/views/**/*.blade.php` and non-generated CSS for §11's forbidden forms, including `components/ui`; `exceptions.json` is the only way out |
-| 2   | Duplicate tokens      | No token is declared twice in one layer or theme block; no two `@theme` entries expose the same name                                                                                                 |
-| 3   | Missing tokens        | Every `var(--x)` and every token utility used in components resolves to a declared token; every theme defines every L2 token                                                                         |
-| 4   | Unused tokens         | Every exposed L2/L3 token is used by at least one component, CSS rule or another token (allow-list for roles kept for downstream projects, e.g. `brand-surface`)                                     |
-| 5   | Layer references      | L1 has literals only; L2 references L1 only; L3 references L2 only (§2)                                                                                                                              |
-| 6   | Theme consistency     | Same key set in every theme; a dark block identical to light for a role needs an explicit `roles` entry                                                                                              |
-| 7   | Contrast              | `DesignTokensTest`: every declared pair (§10), every theme                                                                                                                                           |
-| 8   | Component compliance  | Check 1 plus: every shared component in `components/ui` and `components/` uses only token utilities; reported per file                                                                               |
-| 9   | Palette configuration | `npm run palette:check`: JSON schema, valid HEX, roles refer to existing steps, generated files are up to date (regenerate and compare byte for byte)                                                |
-| 10  | Visual regression     | Playwright `tests/browser` (axe and screenshots on every page × theme × direction × width). Pixel-baseline comparison is **Planned**: the screenshots are kept as CI artifacts but not compared yet  |
+| #   | Check                 | How                                                                                                                                                                                                                                                                                                                                                         |
+| --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Hardcoded UI colours  | `ColorSystemTest`: every `.tsx` (including `components/ui`) and Blade view, for §11's forbidden forms (palette utilities with any variant, arbitrary colour values, `--palette-*`, inline style colours, colour strings); `app.css` and `components.css` hold no colour literal; `exceptions.json` is the only way out                                      |
+| 2   | Duplicate tokens      | `ColorSystemTest`: no name twice in a block (L1, each L2 theme, L3, `@theme`), and L1, L2 and L3 never share a name                                                                                                                                                                                                                                         |
+| 3   | Missing tokens        | `ColorSystemTest`/`DesignTokensTest`: every `var()` in the layers resolves; every `@theme` colour exposes an existing role or L3 token under its own name; every pair names existing tokens; every `bg-`, `fill-` and `stroke-` colour utility used resolves (`text-` and `border-` utilities are not checked: their non-colour forms are too many to list) |
+| 4   | Unused tokens         | `ColorSystemTest`: every L3 token is used by a component or by CSS other than its definition. L2 roles are a contract every project keeps, so an idle role (e.g. `highlight` in the template) is allowed                                                                                                                                                    |
+| 5   | Layer references      | L1 has literals only; L2 references L1 only; L3 references L2 only (§2)                                                                                                                                                                                                                                                                                     |
+| 6   | Theme consistency     | `ColorSystemTest`: the same role set in every theme; a dark role equal to light needs a reason (§6.3)                                                                                                                                                                                                                                                       |
+| 7   | Contrast              | `DesignTokensTest`: every declared pair (§10), every theme                                                                                                                                                                                                                                                                                                  |
+| 8   | Component compliance  | Check 1 covers every component, `components/ui` included, and names each offending file                                                                                                                                                                                                                                                                     |
+| 9   | Palette configuration | `npm run palette:check` (part of `npm run check`) and `ColorSystemTest`: valid JSON and HEX, references to existing steps, every declared pair passes, generated files byte-identical to a fresh generation                                                                                                                                                 |
+| 10  | Visual regression     | Playwright `tests/browser` (axe and screenshots on every page × theme × direction × width). Pixel-baseline comparison is **Planned**: the screenshots are kept as CI artifacts but not compared yet                                                                                                                                                         |
 
-Checks 1–9 run in `composer test` / CI. Check 9 also runs in CI's `browser` job
-before the build.
+Checks 1–9 run in `composer test` (Pest) locally and in CI's `ci` and
+`pgsql` jobs; check 9 also runs in `composer ci:check` through `npm run check`.
 
 ## 13. Exceptions and approval
 
@@ -480,28 +501,39 @@ a role is missing: add it (§11), don't recolour the component.
 
 ## 17. Implementation status (template)
 
-| Part                                                            | Status                                  |
-| --------------------------------------------------------------- | --------------------------------------- |
-| Semantic tokens, light/dark, contrast test (ADR-0024)           | Implemented, Tested                     |
-| This standard, CLAUDE.md reference, Cursor rule                 | Implemented (G1)                        |
-| L1 palette, generator, palette.json, report                     | Planned (G2)                            |
-| L2 extended roles, L3 component tokens, gradients               | Planned (G2)                            |
-| Migration of the 13 raw colours and of `destructive-foreground` | Planned (G2)                            |
-| Checks 1–9                                                      | Planned (G2/G3)                         |
-| Check 10 pixel baselines                                        | Planned (not in this directive's scope) |
+| Part                                                            | Status                                                      |
+| --------------------------------------------------------------- | ----------------------------------------------------------- |
+| Semantic tokens, light/dark, contrast test (ADR-0024)           | Implemented, Tested                                         |
+| This standard, CLAUDE.md reference, Cursor rule                 | Implemented (G1)                                            |
+| L1 palette, generator, palette.json, pairs.json, report         | Implemented, Tested (G2)                                    |
+| L2 extended roles, L3 component tokens                          | Implemented, Tested (G2)                                    |
+| Gradients                                                       | Implemented; none declared in the template; exercised in G3 |
+| Migration of the 13 raw colours and of `destructive-foreground` | Implemented, Tested (G2)                                    |
+| Checks 1–9                                                      | Implemented, Tested (G2); acceptance tests A–F in G3        |
+| Check 10 pixel baselines                                        | Planned (not in this directive's scope)                     |
 
-## 18. Migration notes for 1.0.0
+## 18. Migration notes for 1.0.0 (done in the template)
 
-- `destructive-foreground` (red text on the page) becomes `destructive-text`,
-  and `destructive-foreground` becomes the text on a destructive solid (white or
-  as chosen). There are 14 usages in the template.
-- `text-white` on destructive button and badge becomes `text-destructive-foreground`.
-- `bg-black/80` in dialog and sheet becomes `bg-overlay`.
-- `decoration-neutral-300/500` on links becomes `decoration-border-strong` (or
-  a `link-decoration` L3 token).
-- The split auth layout's `bg-zinc-900 text-white` panel becomes
+- `text-destructive-foreground` (red text on the page) became
+  `text-destructive-text`, and `destructive-foreground` is now the text on a
+  destructive solid. Plain `text-destructive` and `text-success` used as text
+  became `text-destructive-text` and `text-success-text`.
+- `text-white` on the destructive button and badge became
+  `text-destructive-foreground`.
+- `bg-black/80` in dialog and sheet became `bg-overlay`.
+- `decoration-neutral-300 dark:decoration-neutral-500` on links became
+  `decoration-link-underline` (L3).
+- The split auth layout's `bg-zinc-900 text-white` panel became
   `bg-brand-surface text-brand-surface-foreground`.
-- The QR code's `bg-white` becomes an approved exception (§13).
+- The default button uses the L3 `button-primary` tokens, with
+  `primary-hover` and `primary-active` instead of `bg-primary/90`.
+- Table heads and selected rows use the L3 `table-head` and
+  `table-row-selected` tokens.
+- The sidebar's `hsl(var(--sidebar-border))` shadows (invalid with OKLCH
+  values) became `var(--sidebar-border)`.
+- The QR code's `bg-white` became `bg-[white]`, an approved exception (§13).
+- Tailwind's default palette is switched off (`--color-*: initial`), so a raw
+  palette utility produces no CSS at all, besides failing check 1.
 
 ## 19. Change log
 

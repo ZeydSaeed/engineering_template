@@ -1,134 +1,87 @@
 <?php
 
-use Illuminate\Support\Facades\File;
+use Tests\Support\DesignTokens;
 
 /*
-| WCAG AA contrast of the design tokens in resources/css/app.css, light and
-| dark (ADR-0024): 4.5:1 for text, 3:1 for field borders and focus rings
-| (WCAG 1.4.3 and 1.4.11). A token change that breaks a pair fails here.
+| WCAG 2.2 AA contrast of every declared colour pair, in every theme
+| (docs/standards/COLOR-DESIGN-SYSTEM.md §10, ADR-0024): 4.5:1 for text,
+| 3:1 for control boundaries, focus rings and chart marks (WCAG 1.4.3 and
+| 1.4.11). The pairs are resources/design-system/pairs.json; a component
+| that introduces a new pairing adds it there. A token change that breaks a
+| pair fails here.
 */
 
 /**
- * @return array<string, string> token name => oklch(...) value
+ * @return list<array{fg: string, bg: string, min: float, over?: string}>
  */
-function themeTokens(string $selector): array
+function declaredPairs(): array
 {
-    $css = (string) file_get_contents(resource_path('css/app.css'));
-
-    expect(preg_match('/^'.preg_quote($selector, '/').' \{(.*?)^\}/ms', $css, $block))->toBe(1, "{$selector} block not found");
-
-    preg_match_all('/--([a-z0-9-]+):\s*(oklch\([^)]*\));/', $block[1], $matches, PREG_SET_ORDER);
-
-    return array_column($matches, 2, 1);
+    return json_decode((string) file_get_contents(resource_path('design-system/pairs.json')), true, flags: JSON_THROW_ON_ERROR);
 }
 
-/**
- * WCAG relative luminance of an oklch() colour (clipped to sRGB).
- */
-function luminance(string $oklch): float
-{
-    expect(preg_match('/oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)/', $oklch, $m))->toBe(1, "unparsable {$oklch}");
+dataset('themes', array_keys(DesignTokens::THEMES));
 
-    [$lightness, $chroma, $hue] = [(float) $m[1], (float) $m[2], deg2rad((float) $m[3])];
-    $a = $chroma * cos($hue);
-    $b = $chroma * sin($hue);
+it('meets the contrast of every declared pair', function (string $theme) {
+    $tokens = DesignTokens::resolved($theme);
+    $failures = [];
 
-    $l = ($lightness + 0.3963377774 * $a + 0.2158037573 * $b) ** 3;
-    $mm = ($lightness - 0.1055613458 * $a - 0.0638541728 * $b) ** 3;
-    $s = ($lightness - 0.0894841775 * $a - 1.2914855480 * $b) ** 3;
+    foreach (declaredPairs() as $pair) {
+        foreach (['fg', 'bg', 'over'] as $side) {
+            if (isset($pair[$side])) {
+                expect($tokens)->toHaveKey($pair[$side], message: "{$theme}: pair token --{$pair[$side]} is not declared");
+            }
+        }
 
-    $red = 4.0767416621 * $l - 3.3077115913 * $mm + 0.2309699292 * $s;
-    $green = -1.2684380046 * $l + 2.6097574011 * $mm - 0.3413193965 * $s;
-    $blue = -0.0041960863 * $l - 0.7034186147 * $mm + 1.7076147010 * $s;
+        $ratio = DesignTokens::contrast(
+            $tokens[$pair['fg']],
+            $tokens[$pair['bg']],
+            $tokens[$pair['over'] ?? 'background'],
+        );
 
-    [$red, $green, $blue] = array_map(fn (float $c): float => min(1.0, max(0.0, $c)), [$red, $green, $blue]);
-
-    return 0.2126 * $red + 0.7152 * $green + 0.0722 * $blue;
-}
-
-function contrast(string $one, string $two): float
-{
-    $a = luminance($one);
-    $b = luminance($two);
-
-    return (max($a, $b) + 0.05) / (min($a, $b) + 0.05);
-}
-
-dataset('themes', [':root', '.dark']);
-
-it('gives every text pair at least 4.5:1', function (string $theme) {
-    $t = themeTokens($theme);
-    $white = 'oklch(1 0 0)';
-
-    $pairs = [
-        'foreground on background' => [$t['foreground'], $t['background']],
-        'card' => [$t['card-foreground'], $t['card']],
-        'popover' => [$t['popover-foreground'], $t['popover']],
-        'primary button' => [$t['primary-foreground'], $t['primary']],
-        'primary text (links)' => [$t['primary'], $t['background']],
-        'secondary' => [$t['secondary-foreground'], $t['secondary']],
-        'muted text on background' => [$t['muted-foreground'], $t['background']],
-        'muted text on muted' => [$t['muted-foreground'], $t['muted']],
-        'muted text on card' => [$t['muted-foreground'], $t['card']],
-        'accent' => [$t['accent-foreground'], $t['accent']],
-        'destructive button (white text)' => [$white, $t['destructive']],
-        'destructive text' => [$t['destructive-foreground'], $t['background']],
-        'success' => [$t['success-foreground'], $t['success']],
-        'success text (status messages)' => [$t['success'], $t['background']],
-        'warning' => [$t['warning-foreground'], $t['warning']],
-        'info' => [$t['info-foreground'], $t['info']],
-        'sidebar' => [$t['sidebar-foreground'], $t['sidebar']],
-        'sidebar primary' => [$t['sidebar-primary-foreground'], $t['sidebar-primary']],
-        'sidebar accent' => [$t['sidebar-accent-foreground'], $t['sidebar-accent']],
-    ];
-
-    foreach ($pairs as $name => [$text, $background]) {
-        expect(contrast($text, $background))->toBeGreaterThanOrEqual(4.5, "{$theme} {$name}: ".round(contrast($text, $background), 2).':1');
-    }
-})->with('themes');
-
-it('gives field borders and focus rings at least 3:1', function (string $theme) {
-    $t = themeTokens($theme);
-
-    foreach (['input', 'ring', 'sidebar-ring'] as $token) {
-        foreach (['background', 'card'] as $surface) {
-            expect(contrast($t[$token], $t[$surface]))->toBeGreaterThanOrEqual(3.0, "{$theme} {$token} on {$surface}: ".round(contrast($t[$token], $t[$surface]), 2).':1');
+        if ($ratio < $pair['min']) {
+            $failures[] = sprintf('%s on %s: %.2f:1, %s:1 needed', $pair['fg'], $pair['bg'], $ratio, $pair['min']);
         }
     }
+
+    expect($failures)->toBe([], "{$theme}: ".implode('; ', $failures));
 })->with('themes');
+
+it('declares a pair for every text colour and every surface', function () {
+    $pairs = collect(declaredPairs());
+    $roles = array_keys(DesignTokens::block('design-system/themes.css', ':root'));
+
+    foreach ($roles as $role) {
+        if (str_ends_with($role, '-foreground')) {
+            $surface = substr($role, 0, -strlen('-foreground'));
+
+            expect($pairs->contains(fn (array $p): bool => $p['fg'] === $role && $p['bg'] === $surface))
+                ->toBeTrue("no declared pair for {$role} on {$surface}");
+        }
+
+        if (str_ends_with($role, '-text')) {
+            expect($pairs->contains(fn (array $p): bool => $p['fg'] === $role && $p['bg'] === 'background'))
+                ->toBeTrue("no declared pair for {$role} on background");
+        }
+    }
+});
 
 it('paints the page background before the stylesheet in the token colour', function () {
     $view = (string) file_get_contents(resource_path('views/app.blade.php'));
 
-    expect($view)->toContain('background-color: '.themeTokens(':root')['background'].';')
-        ->toContain('background-color: '.themeTokens('.dark')['background'].';');
-});
+    foreach (DesignTokens::THEMES as $theme => $selector) {
+        $background = DesignTokens::resolved($theme)['background'];
+        $css = sprintf('oklch(%s %s %s)', $background['l'], $background['c'], $background['h']);
 
-it('colours the application with tokens, not raw palette colours', function () {
-    $offenders = [];
-    // A QR code needs a white background in both themes.
-    $allowed = ['bg-white p-2 [&_svg]:size-full'];
-
-    foreach (File::allFiles(resource_path('js')) as $file) {
-        $path = str_replace('\\', '/', $file->getRelativePathname());
-
-        // components/ui follows shadcn upstream; the split auth layout is a
-        // deliberately dark panel.
-        if ($file->getExtension() !== 'tsx' || str_starts_with($path, 'components/ui/') || $path === 'layouts/auth/auth-split-layout.tsx') {
-            continue;
-        }
-
-        $source = str_replace($allowed, '', $file->getContents());
-
-        if (preg_match_all('/\b(?:text|bg|border|fill|stroke|ring)-(?:black|white|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})\b/', $source, $matches) > 0) {
-            $offenders[] = $path.': '.implode(', ', array_unique($matches[0]));
-        }
+        expect($view)->toContain("background-color: {$css};");
     }
-
-    expect($offenders)->toBe([]);
 });
 
 it('computes contrast like the WCAG reference', function () {
-    expect(round(contrast('oklch(0 0 0)', 'oklch(1 0 0)'), 1))->toBe(21.0)
-        ->and(round(contrast('oklch(1 0 0)', 'oklch(1 0 0)'), 1))->toBe(1.0);
+    $black = DesignTokens::parse('oklch(0 0 0)');
+    $white = DesignTokens::parse('oklch(1 0 0)');
+
+    expect(round(DesignTokens::contrast($black, $white), 1))->toBe(21.0)
+        ->and(round(DesignTokens::contrast($white, $white), 1))->toBe(1.0)
+        // 50% black over white is sRGB 0.5 grey: 3.98:1 against white.
+        ->and(round(DesignTokens::contrast([...$black, 'alpha' => 0.5], $white, $white), 2))->toBe(3.98);
 });

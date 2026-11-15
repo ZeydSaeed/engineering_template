@@ -17,15 +17,16 @@
             })();
         </script>
 
-        {{-- The page background before the stylesheet arrives; the same
-             values as --background in resources/css/app.css. --}}
+        {{-- The page background before the stylesheet arrives: the resolved
+             --background of each theme (resources/css/design-system/;
+             DesignTokensTest keeps them equal). --}}
         <style>
             html {
-                background-color: oklch(0.99 0.002 247);
+                background-color: oklch(0.98 0.009 252);
             }
 
             html.dark {
-                background-color: oklch(0.17 0.01 255);
+                background-color: oklch(0.2 0.012 252);
             }
         </style>
 

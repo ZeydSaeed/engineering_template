@@ -18,7 +18,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             <Head title={t('Forgot password')} />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-success">
+                <div className="mb-4 text-center text-sm font-medium text-success-text">
                     {status}
                 </div>
             )}

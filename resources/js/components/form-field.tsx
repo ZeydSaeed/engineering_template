@@ -68,10 +68,7 @@ export default function FormField({
                 {label}
                 {required && (
                     <>
-                        <span
-                            aria-hidden
-                            className="text-destructive-foreground"
-                        >
+                        <span aria-hidden className="text-destructive-text">
                             *
                         </span>
                         <span className="sr-only">{t('(required)')}</span>
@@ -115,7 +112,7 @@ export default function FormField({
             <p
                 id={errorId}
                 aria-live="polite"
-                className="text-sm text-destructive-foreground empty:hidden"
+                className="text-sm text-destructive-text empty:hidden"
             >
                 {error}
             </p>

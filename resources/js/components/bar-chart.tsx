@@ -102,7 +102,7 @@ export default function BarChart({
                 <div className="overflow-x-auto rounded-xl border">
                     <table className="w-full text-sm" data-slot="chart-table">
                         <caption className="sr-only">{title}</caption>
-                        <thead className="bg-muted/50">
+                        <thead className="bg-table-head text-table-head-foreground">
                             <tr>
                                 <th
                                     scope="col"

@@ -12,13 +12,13 @@ export default function AuthSplitLayout({
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-e">
-                <div className="absolute inset-0 bg-zinc-900" />
+            <div className="relative hidden h-full flex-col bg-brand-surface p-10 text-brand-surface-foreground lg:flex dark:border-e">
+                <div className="absolute inset-0 bg-brand-surface" />
                 <Link
                     href={home()}
                     className="relative z-20 flex items-center text-lg font-medium"
                 >
-                    <AppLogoIcon className="me-2 size-8 fill-current text-white" />
+                    <AppLogoIcon className="me-2 size-8 fill-current text-brand-surface-foreground" />
                     {name}
                 </Link>
             </div>

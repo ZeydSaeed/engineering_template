@@ -64,7 +64,7 @@ export default function PasskeyItem({ passkey, onDelete }: Props) {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="text-destructive-text hover:bg-destructive/10 hover:text-destructive-text"
                     >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">{t('Remove')}</span>

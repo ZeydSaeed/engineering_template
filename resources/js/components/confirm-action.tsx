@@ -91,7 +91,7 @@ export default function ConfirmAction({
                                     <p
                                         key={name}
                                         role="alert"
-                                        className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+                                        className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive-text"
                                         data-slot="confirm-action-error"
                                     >
                                         {message}

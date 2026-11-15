@@ -1,0 +1,35 @@
+/*
+| L3 component tokens (docs/standards/COLOR-DESIGN-SYSTEM.md §7). They name a
+| colour decision of one component and reference L2 roles only, so they hold
+| no theme values: the theme changes the roles underneath. A project gives a
+| component its own look here (e.g. --sidebar: var(--brand-surface)), never
+| in the component's markup.
+*/
+:root {
+    /* Buttons (components/ui/button.tsx). */
+    --button-primary: var(--primary);
+    --button-primary-foreground: var(--primary-foreground);
+    --button-primary-hover: var(--primary-hover);
+    --button-primary-active: var(--primary-active);
+
+    /* Form fields: 3:1 boundaries (WCAG 1.4.11). */
+    --input: var(--border-strong);
+
+    /* Links in running text: underline, so colour is not the only cue. */
+    --link-underline: var(--border-strong);
+
+    /* Tables (data-table, bar-chart's table view). */
+    --table-head: color-mix(in oklch, var(--muted) 50%, transparent);
+    --table-head-foreground: var(--foreground);
+    --table-row-selected: color-mix(in oklch, var(--accent) 60%, transparent);
+
+    /* Sidebar (components/ui/sidebar.tsx). */
+    --sidebar: var(--card);
+    --sidebar-foreground: var(--card-foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+}
