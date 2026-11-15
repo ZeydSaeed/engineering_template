@@ -123,7 +123,7 @@ it('lets each layer reference only the layer below (§2)', function () {
 
     foreach (DesignTokens::THEMES as $selector) {
         foreach (DesignTokens::declarations(DesignTokens::css('design-system/themes.css'), $selector) as [$name, $value]) {
-            expect($value)->toMatch("/^(?:{$palette}|color-mix\(in oklch, {$palette} \d+%, (?:{$palette}|transparent)\)|linear-gradient\(\d+deg(?:, {$palette})+\))$/", "--{$name}");
+            expect($value)->toMatch("/^(?:{$palette}|color-mix\(in oklch, {$palette} \d+%, (?:{$palette}|transparent)\)|linear-gradient\(\d+deg(?:, {$palette})+\)|none)$/", "--{$name}");
         }
     }
 

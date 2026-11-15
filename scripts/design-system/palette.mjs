@@ -625,13 +625,23 @@ function mapTheme(theme, families, overrides, problems) {
         return `${spec.pick}-${found}`;
     };
 
-    for (const [role, fallback] of DEFAULTS[theme]) {
+    // §6.5: project roles are extra keys in palette.json "roles", after the
+    // canonical ones; a project "-foreground" may be "auto".
+    const projectRoles = Object.keys(overrides ?? {})
+        .filter((role) => !ROLE_NAMES.includes(role))
+        .map((role) => [role, undefined]);
+
+    for (const [role, fallback] of [...DEFAULTS[theme], ...projectRoles]) {
         const given = overrides?.[role];
         const spec = given ?? fallback;
         let ref = null;
 
         try {
-            if (spec === 'auto') {
+            if (spec === undefined) {
+                throw new Error(
+                    'a project role needs a value in palette.json "roles"',
+                );
+            } else if (spec === 'auto') {
                 const base = role.replace(/-foreground$/, '');
 
                 ref = foregroundFor(values[base], familyOf(refs[base]));
@@ -867,8 +877,16 @@ function themesCss(themes, gradients) {
             lines.push(`    --${role}: ${themes[theme].resolver.toCss(ref)};`);
         }
 
-        for (const [name, gradient] of Object.entries(gradients[theme] ?? {})) {
-            lines.push(`    --gradient-${name}: ${gradient.css};`);
+        // A gradient a theme does not list is `none` there, so it is not
+        // inherited from :root on the same element.
+        const names = new Set(
+            Object.values(gradients).flatMap((byName) => Object.keys(byName)),
+        );
+
+        for (const name of names) {
+            lines.push(
+                `    --gradient-${name}: ${gradients[theme]?.[name]?.css ?? 'none'};`,
+            );
         }
 
         lines.push('}');
@@ -1132,6 +1150,34 @@ export function generate() {
             config.roles?.[theme],
             problems,
         );
+    }
+
+    // A project role must exist in every theme, with a valid name.
+    const roleSets = Object.entries(themes).map(([theme, mapped]) => [
+        theme,
+        Object.keys(mapped.refs).sort().join(' '),
+    ]);
+
+    for (const [theme, set] of roleSets.slice(1)) {
+        if (set !== roleSets[0][1]) {
+            problems.push(
+                `the ${theme} theme does not define the same roles as ${roleSets[0][0]}; a project role belongs in every theme's "roles".`,
+            );
+        }
+    }
+
+    for (const role of Object.keys(themes.light.refs)) {
+        if (!ROLE_NAMES.includes(role) && !/^[a-z][a-z0-9-]*$/.test(role)) {
+            problems.push(
+                `project role "${role}": lower-case letters, digits and dashes only.`,
+            );
+        }
+
+        if (role.startsWith('palette-') || role.startsWith('color-')) {
+            problems.push(
+                `project role "${role}": must not start with palette- or color-.`,
+            );
+        }
     }
 
     const gradients = buildGradients(config, families, themes, problems);

@@ -1,7 +1,7 @@
 # Color Design System
 
 - Standard: ENG-DESIGN-COLOR-001
-- Version: 1.0.0 (2026-11-15)
+- Version: 1.1.0 (2026-11-15)
 - Status: Accepted. What is built and tested is in the implementation status
   table (§17).
 - Canonical copy: `Engineering-Template/docs/standards/COLOR-DESIGN-SYSTEM.md`.
@@ -298,6 +298,17 @@ generator and to `DesignTokens::THEMES` in the tests (Proposed; none yet).
 The theme selector must be on the root element (`<html>`), where L3 tokens are
 declared: a custom property resolves `var()` on the element that declares it.
 
+### 6.5 Project roles
+
+A project may add a role the canonical set does not have (e.g. `ink`, a
+pure-black text the owner asked for on some pages). It is an extra key in
+`palette.json` `roles`, with a value in **every** theme. A project
+`-foreground` may be `"auto"`. The generator refuses a project role missing
+from a theme, or a name that is not lower-case letters, digits and dashes or
+that starts with `palette-` or `color-`. Project roles are exposed, paired and
+checked like canonical ones. Prefer a canonical role or an L3 token; add a
+project role only for a colour decision that differs per theme.
+
 ## 7. Component layer (L3)
 
 L3 tokens specialise a role for one component. They reference L2 only, and are
@@ -350,6 +361,8 @@ Gradients are tokens, declared in `palette.json`:
 - The generator emits `--gradient-<name>` into each listed theme block, built
   from palette references only. `components.css` exposes each as a
   `bg-gradient-<name>` utility.
+- A gradient not listed for a theme is `none` in that theme's block, so the
+  light value is never inherited by the dark theme on the same element.
 - **Every stop is contrast-checked** against the declared foreground at the
   text threshold. A gradient that fails is not emitted, and the report says why.
 - At most 3 stops. Adjacent stops differ in L by no more than 0.15, so text never
@@ -545,6 +558,7 @@ a role is missing: add it (§11), don't recolour the component.
 
 ## 19. Change log
 
-| Version | Date       | Change                                |
-| ------- | ---------- | ------------------------------------- |
-| 1.0.0   | 2026-11-15 | First version (ENG-DESIGN-COLOR-001). |
+| Version | Date       | Change                                                                                                                                   |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1.0   | 2026-11-15 | Project roles (§6.5); a gradient is `none` in themes that do not list it (§9). Both found while adopting the standard in cyber_security. |
+| 1.0.0   | 2026-11-15 | First version (ENG-DESIGN-COLOR-001).                                                                                                    |
