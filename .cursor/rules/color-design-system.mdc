@@ -1,0 +1,30 @@
+---
+description: Colour design system. Consult before creating or changing any component, page, theme, palette or visual style, and when refactoring or redesigning UI.
+globs: resources/js/**/*.tsx,resources/css/**/*.css,resources/views/**/*.blade.php,resources/design-system/**,scripts/design-system/**
+alwaysApply: false
+---
+
+# Colour design system (ENG-DESIGN-COLOR-001)
+
+The full specification is `docs/standards/COLOR-DESIGN-SYSTEM.md`. Read it
+before you:
+
+- create a new component or page
+- change any colour, state, theme or palette
+- refactor or visually redesign UI
+
+The essentials, which the specification and its tests enforce:
+
+- Components use token utilities only (`bg-primary`, `text-muted-foreground`,
+  `bg-sidebar`, …). Do not use Tailwind palette colours (`bg-blue-600`,
+  `text-white`), arbitrary colours (`bg-[#…]`), inline style colours or
+  `--palette-*` in components.
+- A palette change is `resources/design-system/palette.json` plus
+  `npm run palette`. Never edit the generated `palette.css` or `themes.css`,
+  and never recolour components to change the palette.
+- A missing colour role means adding a token (specification §11), not adding a
+  literal.
+- Every new text/background pairing is a declared, contrast-tested pair, in
+  every theme (WCAG 2.2 AA). Colour is never the only signal.
+- Exceptions only via `resources/design-system/exceptions.json`, with owner
+  approval.

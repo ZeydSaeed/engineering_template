@@ -38,7 +38,9 @@ yarn-error.log
 /.amp
 /.claude
 /.codex
-/.cursor
+/.cursor/*
+# Project rules are part of the engineering standard (COLOR-DESIGN-SYSTEM.md).
+!/.cursor/rules/
 /.factory
 /.grok
 /.junie
